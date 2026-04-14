@@ -1,0 +1,95 @@
+# --- Environment / Secrets ---
+.env
+.env.local
+.env.production
+*.pem
+*.key
+!**/migrations/*.py
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+venv/
+.venv/
+env/
+ENV/
+
+# --- Python testing / linting ---
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+.cache
+
+# --- Node / Frontend ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp
+.pnp.js
+.yarn-integrity
+dist/
+dist-ssr/
+*.local
+.vite/
+
+# --- IDE ---
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# --- Logs ---
+*.log
+logs/
+
+# --- Project-specific ---
+# Playwright session storage (contains encrypted auth, but still — no point tracking)
+backend/storage/sessions/
+backend/storage/debug/
+backend/storage/*.json
+backend/storage/*.html
+
+# Scraper debug artifacts
+debug/
+*.png
+
+# SQLite local dev DBs
+*.sqlite
+*.sqlite3
+*.db
+
+# Docker volumes
+postgres_data/
+
+# Stripe test data
+.stripe/
+
+# OS junk
+.Spotlight-V100
+.Trashes
+ehthumbs.db
