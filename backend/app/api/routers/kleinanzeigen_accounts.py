@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models import AccountStatus, JobType, KleinanzeigenAccount, User
-from app.schemas.resources import KleinanzeigenAccountCreate, KleinanzeigenAccountOut, JobOut
+from app.schemas.resources import JobOut, KleinanzeigenAccountCreate, KleinanzeigenAccountOut
 from app.services.jobs import enqueue_job
 
 router = APIRouter(prefix="/ka-accounts", tags=["kleinanzeigen-accounts"])
@@ -46,6 +47,28 @@ async def delete_account(account_id: int, user: User = Depends(get_current_user)
     await db.commit()
 
 
+@router.post("/{account_id}/start-login", response_model=JobOut)
+async def start_login(account_id: int, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(KleinanzeigenAccount).where(KleinanzeigenAccount.id == account_id, KleinanzeigenAccount.user_id == user.id)
+    )
+    account = result.scalar_one_or_none()
+    if not account:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found")
+    if not account.is_enabled:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Account disabled")
+
+    job = await enqueue_job(
+        db,
+        JobType.START_LOGIN,
+        account_id=account.id,
+        payload={"account_id": account.id},
+        priority=1,
+        max_attempts=1,
+    )
+    return job
+
+
 @router.post("/{account_id}/refresh", response_model=JobOut)
 async def trigger_refresh(account_id: int, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     result = await db.execute(
@@ -56,7 +79,13 @@ async def trigger_refresh(account_id: int, user: User = Depends(get_current_user
         raise HTTPException(status_code=404, detail="Account not found")
     if account.status != AccountStatus.ACTIVE.value:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Account not active (status: {account.status})")
-    job = await enqueue_job(db, JobType.SCRAPE_LISTINGS, account_id=account.id, priority=3)
+    job = await enqueue_job(
+        db,
+        JobType.SCRAPE_LISTINGS,
+        account_id=account.id,
+        payload={"account_id": account.id},
+        priority=3,
+    )
     await enqueue_job(db, JobType.SCRAPE_MESSAGES, account_id=account.id, priority=3)
     return job
 
@@ -69,5 +98,11 @@ async def verify_session(account_id: int, user: User = Depends(get_current_user)
     account = result.scalar_one_or_none()
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
-    job = await enqueue_job(db, JobType.VERIFY_SESSION, account_id=account.id, priority=2)
+    job = await enqueue_job(
+        db,
+        JobType.VERIFY_SESSION,
+        account_id=account.id,
+        payload={"account_id": account.id},
+        priority=2,
+    )
     return job

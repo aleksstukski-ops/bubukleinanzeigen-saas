@@ -1,8 +1,10 @@
 from datetime import datetime
 from enum import Enum
+
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
-from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import Mapped, mapped_column
+
 from app.db.session import Base
 
 
@@ -15,6 +17,7 @@ class JobStatus(str, Enum):
 
 
 class JobType(str, Enum):
+    START_LOGIN = "start_login"
     SCRAPE_LISTINGS = "scrape_listings"
     SCRAPE_MESSAGES = "scrape_messages"
     SCRAPE_CONVERSATION = "scrape_conversation"

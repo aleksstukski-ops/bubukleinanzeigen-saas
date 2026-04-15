@@ -63,6 +63,16 @@ Dieses Dokument wird am Ende jeder Session vom Agenten aktualisiert. Kurz, fakti
 
 (keine)
 
+## ⚠️ WICHTIG: Migration nach `docker compose down -v`
+
+Nach jedem `docker compose down -v` (oder frischem Setup) muss die Alembic-Migration **manuell** ausgeführt werden, bevor das Backend funktioniert:
+
+```bash
+/Applications/Docker.app/Contents/Resources/bin/docker compose exec backend alembic upgrade head
+```
+
+Ohne diesen Schritt existieren keine Tabellen → alle API-Calls scheitern mit 500.
+
 ## Notizen für nächsten Agenten
 
 Wenn du Session 1 Teil 3 machst: Chef will keine lucide-react Icons (Emojis als Strings), keinen useEffect (`if (!loaded)...` Pattern), axios muss auf 0.27.2 pinned bleiben. Das steht alles in HANDOFF.md — halt dich dran.
