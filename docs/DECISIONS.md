@@ -85,3 +85,24 @@ Jede bedeutende architektonische Entscheidung wird hier dokumentiert. Format: AD
 **Alternativen:** [Was wurde sonst noch erwogen?]
 **Trade-offs:** [Was wird bewusst geopfert?]
 ```
+
+---
+
+## ADR-007: Listings-Actions jobbasiert mit stabilen Kleinanzeigen-IDs
+
+**Datum:** 2026-04-16 | **Entscheider:** GPT-5.4 (via Session 3)
+
+**Entscheidung:** UPDATE_LISTING, DELETE_LISTING, BUMP_LISTING laufen als Jobs, nicht synchron. Job-Payload nutzt immer listing_id = kleinanzeigen_id.
+
+**Begründung:**
+- Playwright-Aktionen sind langsam, fehleranfällig, sessionabhängig
+- Worker-Modell passt zur Architektur
+- kleinanzeigen_id ist stabil für Navigation und DOM-Zuordnung
+- UI gibt Sofort-Feedback ohne Browser-Session im HTTP-Request zu blockieren
+
+**Konsequenzen:**
+- Frontend zeigt Notice statt Sofort-Ergebnis
+- Nach Job-Trigger reload
+- Worker/Dispatcher bleibt zentraler Ort für Seiteneffekte
+
+---

@@ -63,3 +63,32 @@ Architektonische Entscheidung (ADR-006):
 - GPT liefert portionsweise (max 3 Dateien pro Nachricht)
 - Bei Umlauten IMMER echte Zeichen (ü, ö, ä), nie Escape-Sequenzen (\u00fc)
 - Modal.jsx funktioniert jetzt — nicht mehr anfassen
+
+---
+
+## Session 3 — Listings UI + Listings-Actions (abgeschlossen 2026-04-16)
+
+### Frontend
+- Menüpunkt "Inserate" aktiviert
+- Route /listings
+- ListingsPage mit Filter (Konto), Suche (Titel), Sortierung (Neueste/Preis/Views)
+- ListingDetailModal: Bild, Titel, Preis, Views, Beschreibung, Link, Actions
+- ListingEditModal: Titel/Preis/Beschreibung bearbeitbar
+
+### Backend
+- POST /listings/{id}/bump, PATCH /listings/{id}, DELETE /listings/{id}
+- Neue Schemas: ListingUpdateIn, ListingActionIn, erweitertes ListingOut
+- edit_listing_page.py Page-Object
+- Selektoren für Edit/Delete/Bump mit Fallback-Cascade
+- Dispatcher-Handler: BUMP_LISTING, DELETE_LISTING, UPDATE_LISTING (alle echte Logik)
+
+### Offene Punkte
+- Selektoren für Bump/Delete/Edit gegen Live-DOM prüfen
+- bump_listing/delete_listing nutzen generische Aktions-Selektoren — DOM-Härtung nötig
+
+### ADR-007 (2026-04-16)
+- Listing-Actions bleiben jobbasiert (nicht synchron im Request)
+- Job-Payload nutzt listing_id = kleinanzeigen_id
+- Priorität: BUMP=2, DELETE=3, UPDATE=3
+
+---
