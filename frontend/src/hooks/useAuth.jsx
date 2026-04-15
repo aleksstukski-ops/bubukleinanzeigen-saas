@@ -1,5 +1,5 @@
 import { createContext, useContext, useMemo, useState } from "react";
-import api, { clearTokens, getAccessToken, getRefreshToken, setTokens } from "../lib/api";
+import api, { removeTokenPair, readTokenPair, storeTokenPair } from "../lib/api";
 
 const AuthContext = createContext(null);
 
@@ -20,8 +20,7 @@ export function AuthProvider({ children }) {
   };
 
   const init = async () => {
-    const accessToken = getAccessToken();
-    const refreshToken = getRefreshToken();
+    const { access_token: accessToken, refresh_token: refreshToken } = readTokenPair();
     if (!accessToken || !refreshToken) {
       setLoading(false);
       setUser(null);
@@ -30,7 +29,7 @@ export function AuthProvider({ children }) {
     try {
       await refreshUser();
     } catch (error) {
-      clearTokens();
+      removeTokenPair();
       setUser(null);
     } finally {
       setLoading(false);
@@ -39,7 +38,10 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     const response = await api.post("/auth/login", { email, password });
-    setTokens(response.data.access_token, response.data.refresh_token);
+    storeTokenPair({
+      access_token: response.data.access_token,
+      refresh_token: response.data.refresh_token,
+    });
     setLoading(true);
     try { return await refreshUser(); }
     finally { setLoading(false); }
@@ -49,14 +51,17 @@ export function AuthProvider({ children }) {
     const response = await api.post("/auth/register", {
       email, password, full_name: name || null,
     });
-    setTokens(response.data.access_token, response.data.refresh_token);
+    storeTokenPair({
+      access_token: response.data.access_token,
+      refresh_token: response.data.refresh_token,
+    });
     setLoading(true);
     try { return await refreshUser(); }
     finally { setLoading(false); }
   };
 
   const logout = () => {
-    clearTokens();
+    removeTokenPair();
     setUser(null);
     if (typeof window !== "undefined") { window.location.replace("/login"); }
   };
