@@ -3,7 +3,7 @@ import { useAuth } from "../hooks/useAuth";
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard", icon: "🏠", disabled: false },
-  { to: "/listings", label: "Inserate", icon: "📋", disabled: true },
+  { to: "/listings", label: "Inserate", icon: "📋", disabled: false },
   { to: "/messages", label: "Nachrichten", icon: "💬", disabled: true },
   { to: "/accounts", label: "Konten", icon: "⚙️", disabled: false },
 ];
@@ -19,8 +19,8 @@ function NavItem({ item, mobile = false }) {
         aria-disabled="true"
       >
         <span className={mobile ? "text-lg" : "text-xl"}>{item.icon}</span>
-        <span className="truncate">{item.label}</span>
-        {!mobile ? <span className="ml-auto text-xs">Bald</span> : <span className="text-[10px]">Bald</span>}
+        <span>{item.label}</span>
+        <span className={mobile ? "text-[10px] uppercase" : "ml-auto text-xs uppercase"}>Bald</span>
       </div>
     );
   }
@@ -38,7 +38,7 @@ function NavItem({ item, mobile = false }) {
       }
     >
       <span className={mobile ? "text-lg" : "text-xl"}>{item.icon}</span>
-      <span className="truncate">{item.label}</span>
+      <span>{item.label}</span>
     </NavLink>
   );
 }
@@ -47,33 +47,45 @@ export default function Layout() {
   const { user, logout } = useAuth();
 
   return (
-    <div className="app-shell">
-      <div className="mx-auto flex min-h-[100dvh] w-full max-w-screen-2xl">
-        <aside className="hidden w-60 shrink-0 border-r border-slate-200 bg-white md:flex md:flex-col">
-          <div className="border-b border-slate-200 px-5 py-5">
-            <div className="text-lg font-semibold text-slate-900">BubuKleinanzeigen</div>
-            <div className="mt-1 text-sm text-slate-500">SaaS Control Panel</div>
-          </div>
-          <nav className="flex-1 space-y-1 px-3 py-4">
-            {navItems.map((item) => (<NavItem key={item.label} item={item} />))}
-          </nav>
-        </aside>
-        <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
-            <div className="flex min-h-16 items-center justify-between gap-3 px-4 py-3 md:px-6">
-              <div className="min-w-0">
-                <div className="text-base font-semibold text-slate-900 md:hidden">BubuKleinanzeigen</div>
-                <div className="truncate text-sm text-slate-500">{user?.email || "\u2014"}</div>
-              </div>
-              <button type="button" onClick={logout} className="btn-secondary shrink-0">Abmelden</button>
-            </div>
-          </header>
-          <main className="page-shell min-w-0 flex-1 px-4 py-4 md:px-6 md:py-6"><Outlet /></main>
+    <div className="flex min-h-screen bg-slate-50">
+      <aside className="hidden w-60 flex-shrink-0 border-r border-slate-200 bg-white md:flex md:flex-col">
+        <div className="border-b border-slate-200 px-4 py-5">
+          <div className="text-lg font-semibold text-slate-900">BubuKleinanzeigen</div>
+          <div className="text-xs text-slate-500">SaaS Control Panel</div>
         </div>
+        <nav className="flex flex-col gap-1 p-3">
+          {navItems.map((item) => (
+            <NavItem key={item.to} item={item} />
+          ))}
+        </nav>
+      </aside>
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
+          <div className="flex min-h-16 items-center justify-between gap-3 px-4 py-3 md:px-6">
+            <div className="min-w-0">
+              <div className="text-base font-semibold text-slate-900 md:hidden">BubuKleinanzeigen</div>
+              <div className="truncate text-sm text-slate-500">{user?.email || "-"}</div>
+            </div>
+            <button type="button" onClick={logout} className="btn-secondary shrink-0">
+              Abmelden
+            </button>
+          </div>
+        </header>
+
+        <main className="page-shell min-w-0 flex-1 px-4 py-4 md:px-6 md:py-6">
+          <Outlet />
+        </main>
       </div>
-      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white md:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+
+      <nav
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white md:hidden"
+        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+      >
         <div className="mx-auto flex max-w-screen-sm items-center justify-around gap-1 px-2 py-2">
-          {navItems.map((item) => (<NavItem key={item.label} item={item} mobile />))}
+          {navItems.map((item) => (
+            <NavItem key={item.to} item={item} mobile />
+          ))}
         </div>
       </nav>
     </div>

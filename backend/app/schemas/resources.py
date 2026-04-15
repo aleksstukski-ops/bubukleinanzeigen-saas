@@ -1,4 +1,5 @@
 from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -8,6 +9,7 @@ class KleinanzeigenAccountCreate(BaseModel):
 
 class KleinanzeigenAccountOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
+
     id: int
     label: str
     kleinanzeigen_user_name: str | None
@@ -20,18 +22,34 @@ class KleinanzeigenAccountOut(BaseModel):
 
 class ListingOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
+
     id: int
     account_id: int
     kleinanzeigen_id: str
     title: str
     price: str | None
+    price_type: str | None
     category: str | None
+    description: str | None
+    location: str | None
     image_url: str | None
     url: str | None
     view_count: int | None
     expires_at: datetime | None
     is_active: bool
     last_scraped_at: datetime
+    created_at: datetime
+
+
+class ListingUpdateIn(BaseModel):
+    account_id: int
+    title: str = Field(min_length=1, max_length=500)
+    price: str | None = Field(default=None, max_length=64)
+    description: str | None = Field(default=None, max_length=10000)
+
+
+class ListingActionIn(BaseModel):
+    account_id: int
 
 
 class ListingListResponse(BaseModel):
@@ -42,6 +60,7 @@ class ListingListResponse(BaseModel):
 
 class ConversationOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
+
     id: int
     account_id: int
     kleinanzeigen_id: str
@@ -56,6 +75,7 @@ class ConversationOut(BaseModel):
 
 class MessageOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
+
     id: int
     conversation_id: int
     direction: str
@@ -71,6 +91,7 @@ class SendMessageIn(BaseModel):
 
 class JobOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
+
     id: int
     type: str
     status: str

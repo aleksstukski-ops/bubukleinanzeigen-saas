@@ -58,11 +58,86 @@ class Selectors:
         "body",
     ]
 
+    LISTING_ACTION_MENU_BUTTON = [
+        '[data-testid="vip-actions-dropdown-button"]',
+        'button[aria-controls*="dropdown"]',
+        'button[aria-label*="Option"]',
+        'button[aria-label*="Mehr"]',
+        'button[title*="Option"]',
+    ]
+
+    LISTING_EDIT_LINK = [
+        'a[href*="/bearbeiten"]',
+        'a[href*="edit"]',
+        'a[href*="/m-anzeige-bearbeiten"]',
+    ]
+
+    LISTING_DELETE_BUTTON = [
+        'button[data-testid*="delete"]',
+        'button[aria-label*="Löschen"]',
+        'button:has-text("Löschen")',
+        'a:has-text("Löschen")',
+    ]
+
+    LISTING_BUMP_BUTTON = [
+        'button[data-testid*="push"]',
+        'button[aria-label*="Hochschieben"]',
+        'button:has-text("Hochschieben")',
+        'a:has-text("Hochschieben")',
+        'button:has-text("Wieder nach oben")',
+    ]
+
+    LISTING_DELETE_CONFIRM_BUTTON = [
+        'button[data-testid*="confirm-delete"]',
+        'button:has-text("Ja, löschen")',
+        'button:has-text("Löschen")',
+        'button:has-text("Bestätigen")',
+    ]
+
+    EDIT_FORM = [
+        "form",
+        '[data-testid*="edit-form"]',
+    ]
+
+    EDIT_TITLE_INPUT = [
+        'input[name="title"]',
+        'input[name="ad-title"]',
+        'input[id*="title"]',
+        'input[placeholder*="Titel"]',
+    ]
+
+    EDIT_PRICE_INPUT = [
+        'input[name="price"]',
+        'input[name="ad-price"]',
+        'input[id*="price"]',
+        'input[inputmode="numeric"]',
+    ]
+
+    EDIT_DESCRIPTION_INPUT = [
+        'textarea[name="description"]',
+        'textarea[id*="description"]',
+        'textarea[placeholder*="Beschreibung"]',
+    ]
+
+    EDIT_SUBMIT_BUTTON = [
+        'button[type="submit"]',
+        'button:has-text("Speichern")',
+        'button:has-text("Änderungen speichern")',
+        'button:has-text("Weiter")',
+    ]
+
+    EDIT_SUCCESS_MARKER = [
+        'text="Änderungen gespeichert"',
+        'text="Anzeige wurde gespeichert"',
+        'text="Deine Anzeige ist online"',
+    ]
+
 
 class UrlPatterns:
     LOGIN_URL = "https://www.kleinanzeigen.de/m-einloggen.html"
     MY_ADS_URL = "https://www.kleinanzeigen.de/m-meine-anzeigen.html?tab=ADS"
     MY_ADS_BASE_URL = "https://www.kleinanzeigen.de/m-meine-anzeigen.html"
+    EDIT_LISTING_URL_TEMPLATE = "https://www.kleinanzeigen.de/m-anzeige-bearbeiten.html?adId={listing_id}"
 
     LOGIN_SUCCESS_PATTERNS = [
         "/m-meine-anzeigen.html",
@@ -78,9 +153,7 @@ class UrlPatterns:
 def extract_listing_id_from_href(href: str | None) -> str | None:
     if not href:
         return None
-
     match = LISTING_ID_REGEX.search(href)
     if match is None:
         return None
-
     return match.group(1)

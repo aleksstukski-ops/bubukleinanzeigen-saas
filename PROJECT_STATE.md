@@ -1,82 +1,65 @@
 # Project State
 
-**Zuletzt aktualisiert:** 2026-04-14 (Claude Opus 4.6, Ende Session 1 Teil 2)
-
-Dieses Dokument wird am Ende jeder Session vom Agenten aktualisiert. Kurz, faktisch, kein Gelaber.
-
----
+Zuletzt aktualisiert: 2026-04-16 (Ende Session 2)
 
 ## Aktueller Stand
 
-**Phase:** Session 1 Teil 2 abgeschlossen
-**Nächster Schritt:** Session 1 Teil 3 — Frontend-Skelett vervollständigen
+Phase: Session 2 abgeschlossen
+Nächster Schritt: Session 3 — Listings UI + Listings-Actions
 
 ## Was funktioniert
 
-- Docker Compose startet alle 5 Services (postgres, redis, backend, scraper, frontend)
-- Backend-API läuft auf Port 8000, OpenAPI-Docs auf `/docs`
-- Alembic-Migration erstellt alle Tabellen
-- Auth-Flow: Register → Login → Refresh Token → /me
+- Alle 5 Docker-Services laufen (postgres, redis, backend, scraper, frontend)
+- Auth-Flow komplett (Register, Login, Refresh, Logout)
 - Kleinanzeigen-Accounts CRUD mit Plan-Limit-Check
-- Job-Queue funktioniert end-to-end (DB + Redis)
-- Scraper-Worker läuft und nimmt Jobs an (Handler werfen `NotImplementedError` bis Session 2)
+- Job-Queue end-to-end (DB + Redis)
+- Scraper-Worker läuft, wartet auf Jobs
+- Scraper-Foundation: Selectors, BasePage, LoginPage, ListingsPage, SessionManager
+- START_LOGIN, VERIFY_SESSION, SCRAPE_LISTINGS Handler implementiert
+- Frontend: Login, Register, Dashboard, Accounts-Page mit Login-Button
+- Modal funktioniert (Bug in Session 2 gefixt)
+- cli_login.py als Host-CLI für sichtbares Browser-Login vorbereitet
 
-## Was NICHT funktioniert / fehlt
+## Was NICHT funktioniert / offen
 
-- Frontend ist nur ein leeres Gerüst — keine UI-Seiten existieren
-- Scraper-Handler sind Stubs — kein echtes Kleinanzeigen-Scraping
-- Stripe-Integration komplett offen
-- Kein Admin-Dashboard
-- Kein Deployment
+- Sichtbarer Login-Browser nicht getestet (cli_login.py läuft noch nicht scharf)
+- Listings-UI ist Placeholder ("Bald")
+- Nachrichten komplett offen
+- Stripe offen
+- Admin-Dashboard offen
+- Deployment offen
 
-## Offene Entscheidungen
+## Known Issues
 
-- Cloud-Browser für visible Login in Production (Browserbase vs. VNC-in-Container vs. lokaler Dev-Only)
-- Logging-Stack (stdout + Docker vs. Loki/Grafana)
-- E-Mail-Versand (Mailjet vs. Postmark vs. Resend)
+- Erste DB-Migration muss manuell laufen: docker compose exec backend alembic upgrade head
+- GLM-5.1 kann Dateien groesser 2KB nicht zuverlaessig schreiben — Cursor nutzen stattdessen
 
 ## Session-Log
 
-### 2026-04-14: Session 1 Teil 1+2 — Foundation (Claude Opus 4.6)
+### 2026-04-16: Session 2 — Scraper-Foundation
 
-**Fertiggestellt:**
-- Projekt-Struktur angelegt
-- `docker-compose.yml` mit allen 5 Services
-- Backend komplett: core (config/security/crypto), db, models (User/Account/Listing/Conversation/Message/Job), schemas, api/routers (auth/accounts/jobs/listings/messages), main, services/jobs, shared/queue
-- Scraper-Skelett: worker.py, dispatcher.py, session_manager.py
-- Alembic: env.py + 0001_initial.py (komplette Initial-Migration)
-- Frontend: package.json, Dockerfile, vite.config.js
-- `HANDOFF.md`, `PROJECT_STATE.md`, `SETUP_GITHUB.md`, `AGENT_START_PROMPT.md`
+Fertiggestellt:
+- selectors.py (Selektor-Cascades mit Regex fuer stabile IDs)
+- pages/base.py (BasePage mit try_selectors, Fallback-Warnings)
+- pages/login_page.py (sichtbarer Login, Session-Capture)
+- pages/listings_page.py (Scrape mit stabilen IDs, UPSERT)
+- services/sessions.py (Fernet-verschluesselte storage_state)
+- session_manager.py komplett (Playwright-Integration, per-Account Locks)
+- dispatcher.py mit echten START_LOGIN, VERIFY_SESSION, SCRAPE_LISTINGS Handlern
+- api/routers/kleinanzeigen_accounts.py (POST /start-login, /refresh, /verify)
+- cli_login.py (Host-CLI fuer visible Login)
+- Frontend: AccountsPage mit Login-Buttons, Status-Badges, Listing-Count
+- Modal.jsx Bug gefixt (Transform-Konflikt, Click-Through)
+- Unicode-Escape-Bugs in AccountsPage behoben
+- api.js Token-Pair-API (storeTokenPair, readTokenPair, removeTokenPair)
+- useAuth.jsx angepasst an neue api.js
 
-**Architektonische Entscheidungen:**
-- Scraper als separater Prozess (nicht im API-Container) — bessere Isolation, eigener Crash-Bereich
-- Redis-Queue mit 3 Priority-Lanes (high/normal/low) statt single queue — User-Aktionen beat Background-Refresh
-- Fernet-Verschlüsselung für Sessions (Key derived from SECRET_KEY) — pragmatisch, bei Leak von SECRET_KEY auch Sessions weg
-- SQLAlchemy async durchgehend — spart sync/async Kontextwechsel
+Architektonische Entscheidung (ADR-006):
+- Visible Login als Host-CLI-Subprocess (Option B aus HANDOFF.md Session 2 Plan), nicht im Docker-Container. Grund: X11-Forwarding auf macOS zu fragil fuer MVP.
 
-**Bewusste Vereinfachungen:**
-- Handler sind Stubs, keine echten Playwright-Aktionen — das ist Session 2
-- Frontend hat nur package.json/vite-config — UI-Pages sind Session 1 Teil 3
-- Kein WebSocket noch — Polling reicht für MVP
+## Notizen fuer naechsten Agenten
 
-## Bekannte Issues
-
-(keine)
-
-## ⚠️ WICHTIG: Migration nach `docker compose down -v`
-
-Nach jedem `docker compose down -v` (oder frischem Setup) muss die Alembic-Migration **manuell** ausgeführt werden, bevor das Backend funktioniert:
-
-```bash
-/Applications/Docker.app/Contents/Resources/bin/docker compose exec backend alembic upgrade head
-```
-
-Ohne diesen Schritt existieren keine Tabellen → alle API-Calls scheitern mit 500.
-
-## Notizen für nächsten Agenten
-
-Wenn du Session 1 Teil 3 machst: Chef will keine lucide-react Icons (Emojis als Strings), keinen useEffect (`if (!loaded)...` Pattern), axios muss auf 0.27.2 pinned bleiben. Das steht alles in HANDOFF.md — halt dich dran.
-
-Frontend ist mobile-first. iOS Safari Kompatibilität ist Pflicht (removeChild-Fix mit transform statt conditional render, 100dvh statt 100vh).
-
-Wenn Backend läuft, kannst du Frontend gegen echtes Backend testen — nicht mocken.
+- Cursor statt GLM fuer Datei-Schreiben nutzen
+- GPT liefert portionsweise (max 3 Dateien pro Nachricht)
+- Bei Umlauten IMMER echte Zeichen (ü, ö, ä), nie Escape-Sequenzen (\u00fc)
+- Modal.jsx funktioniert jetzt — nicht mehr anfassen
