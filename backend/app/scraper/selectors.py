@@ -1,4 +1,5 @@
 import re
+from urllib.parse import parse_qs, urlparse
 
 
 LISTING_ID_REGEX = re.compile(r"/(\d{9,})-")
@@ -132,12 +133,94 @@ class Selectors:
         'text="Deine Anzeige ist online"',
     ]
 
+    MESSAGES_IFRAME = [
+        'iframe[src*="m-messages"]',
+        'iframe[name="messages"]',
+        'iframe[src*="messages"]',
+    ]
+
+    CONVERSATION_LIST_ITEM = [
+        '[data-testid*="conversation"]',
+        '[class*="conversation-list-item"]',
+        'a[href*="conversationId="]',
+    ]
+
+    CONVERSATION_LINK = [
+        'a[href*="conversationId="]',
+    ]
+
+    CONVERSATION_PARTNER = [
+        '[data-testid*="partner"]',
+        '[class*="partner"]',
+        '[class*="name"]',
+        "h2",
+        "h3",
+    ]
+
+    CONVERSATION_SUBJECT = [
+        '[data-testid*="subject"]',
+        '[class*="subject"]',
+        '[class*="title"]',
+    ]
+
+    CONVERSATION_PREVIEW = [
+        '[data-testid*="preview"]',
+        '[class*="preview"]',
+        '[class*="snippet"]',
+        "p",
+    ]
+
+    CONVERSATION_UNREAD = [
+        '[data-testid*="unread"]',
+        '[class*="unread"]',
+        '[class*="badge"]',
+    ]
+
+    CONVERSATION_MESSAGE_ROW = [
+        '[data-testid*="message"]',
+        '[class*="message-item"]',
+        '[class*="chat-message"]',
+    ]
+
+    CONVERSATION_MESSAGE_BODY = [
+        '[data-testid*="message-body"]',
+        '[class*="message-body"]',
+        '[class*="bubble"]',
+        "p",
+    ]
+
+    CONVERSATION_MESSAGE_META = [
+        '[data-testid*="message-meta"]',
+        '[class*="message-meta"]',
+        "time",
+    ]
+
+    CONVERSATION_MESSAGE_OUTGOING = [
+        '[data-testid*="outgoing"]',
+        '[class*="outgoing"]',
+        '[class*="sent"]',
+    ]
+
+    CONVERSATION_REPLY_TEXTAREA = [
+        'textarea[name="reply"]',
+        'textarea[placeholder*="Antwort"]',
+        'textarea[placeholder*="Nachricht"]',
+        "textarea",
+    ]
+
+    CONVERSATION_REPLY_SUBMIT = [
+        'button[type="submit"]',
+        'button:has-text("Senden")',
+        'button:has-text("Antworten")',
+    ]
+
 
 class UrlPatterns:
     LOGIN_URL = "https://www.kleinanzeigen.de/m-einloggen.html"
     MY_ADS_URL = "https://www.kleinanzeigen.de/m-meine-anzeigen.html?tab=ADS"
     MY_ADS_BASE_URL = "https://www.kleinanzeigen.de/m-meine-anzeigen.html"
     EDIT_LISTING_URL_TEMPLATE = "https://www.kleinanzeigen.de/m-anzeige-bearbeiten.html?adId={listing_id}"
+    MESSAGES_URL = "https://www.kleinanzeigen.de/m-nachrichten.html"
 
     LOGIN_SUCCESS_PATTERNS = [
         "/m-meine-anzeigen.html",
@@ -157,3 +240,15 @@ def extract_listing_id_from_href(href: str | None) -> str | None:
     if match is None:
         return None
     return match.group(1)
+
+
+def extract_conversation_id_from_href(href: str | None) -> str | None:
+    if not href:
+        return None
+    parsed = urlparse(href)
+    query_params = parse_qs(parsed.query)
+    conversation_ids = query_params.get("conversationId") or query_params.get("conversationid")
+    if not conversation_ids:
+        return None
+    value = str(conversation_ids[0]).strip()
+    return value or None

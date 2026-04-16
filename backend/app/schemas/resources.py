@@ -70,7 +70,9 @@ class ConversationOut(BaseModel):
     last_message_preview: str | None
     last_message_at: datetime | None
     unread_count: int
+    is_archived: bool
     last_scraped_at: datetime
+    created_at: datetime
 
 
 class MessageOut(BaseModel):
@@ -78,11 +80,13 @@ class MessageOut(BaseModel):
 
     id: int
     conversation_id: int
+    kleinanzeigen_id: str
     direction: str
     sender_name: str | None
     body: str
     sent_at: datetime | None
     is_read: bool
+    created_at: datetime
 
 
 class SendMessageIn(BaseModel):
