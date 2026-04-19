@@ -167,12 +167,12 @@ export default function BillingPage() {
               key={plan.id}
               onClick={isClickable ? () => handleUpgrade(plan.id) : undefined}
               className={[
-                "relative flex flex-col rounded-xl border p-5 transition",
+                "relative flex flex-col rounded-xl border p-5 transition hover:border-blue-300 hover:shadow-md",
                 plan.highlight
                   ? "border-blue-300 bg-blue-50 ring-2 ring-blue-200"
-                  : "border-slate-200 bg-white",
+                  : "border-slate-300 bg-white",
                 isCurrent ? "ring-2 ring-emerald-300 border-emerald-300" : "",
-                isClickable ? "cursor-pointer hover:shadow-md active:scale-[0.99]" : "",
+                isClickable ? "cursor-pointer active:scale-[0.99]" : "",
               ].join(" ")}
             >
               {plan.highlight && !isCurrent && (
