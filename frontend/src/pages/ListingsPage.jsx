@@ -29,7 +29,7 @@ function getSortValue(listing, sortBy) {
   if (sortBy === "views_desc") {
     return Number(listing.view_count || 0) * -1;
   }
-  return new Date(listing.last_scraped_at || 0).getTime() * -1;
+  return Number(listing.kleinanzeigen_id || 0) * -1;
 }
 
 function getStatusLabel(listing, processingState) {
