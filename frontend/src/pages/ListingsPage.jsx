@@ -297,6 +297,7 @@ export default function ListingsPage() {
                         <div className="mt-3 grid gap-2 text-sm text-slate-600 sm:grid-cols-3">
                           <div>{"💰"} {listing.price || "Kein Preis"}</div>
                           <div>Views: {formatViews(listing.view_count)}</div>
+                          <div>{"❤️"} {listing.bookmark_count || 0}</div>
                           <div>Sync: {formatDate(listing.last_scraped_at)}</div>
                         </div>
                       </div>
