@@ -44,11 +44,26 @@ function NavItem({ item, mobile = false }) {
 }
 
 export default function Layout() {
-  const { user, logout } = useAuth();
+  const { user, logout, sessionExpired, dismissSessionExpired } = useAuth();
 
   return (
     <div className="flex min-h-screen bg-slate-50">
-      <aside className="hidden w-60 flex-shrink-0 border-r border-slate-200 bg-white md:flex md:flex-col">
+      {sessionExpired && (
+        <div className="fixed inset-x-0 top-0 z-50 flex items-center justify-between gap-3 bg-amber-500 px-4 py-3 text-sm font-medium text-white shadow-md">
+          <span>{'⚠️'} Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.</span>
+          <button
+            type="button"
+            onClick={dismissSessionExpired}
+            className="shrink-0 rounded-md bg-white/20 px-3 py-1 text-sm font-semibold hover:bg-white/30 focus:outline-none focus:ring-2 focus:ring-white"
+          >
+            Neu einloggen
+          </button>
+        </div>
+      )}
+      <aside className={[
+        "hidden w-60 flex-shrink-0 border-r border-slate-200 bg-white md:flex md:flex-col",
+        sessionExpired ? "pt-12" : "",
+      ].join(" ")}>
         <div className="border-b border-slate-200 px-4 py-5">
           <div className="text-lg font-semibold text-slate-900">BubuKleinanzeigen</div>
           <div className="text-xs text-slate-500">SaaS Control Panel</div>
@@ -60,7 +75,7 @@ export default function Layout() {
         </nav>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className={["flex min-w-0 flex-1 flex-col", sessionExpired ? "pt-12" : ""].join(" ")}>
         <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
           <div className="flex min-h-16 items-center justify-between gap-3 px-4 py-3 md:px-6">
             <div className="min-w-0">

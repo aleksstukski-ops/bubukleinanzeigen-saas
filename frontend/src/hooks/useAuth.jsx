@@ -1,5 +1,5 @@
 import { createContext, useContext, useMemo, useState } from "react";
-import api, { removeTokenPair, readTokenPair, storeTokenPair } from "../lib/api";
+import api, { removeTokenPair, readTokenPair, storeTokenPair, setSessionExpiredHandler } from "../lib/api";
 
 const AuthContext = createContext(null);
 
@@ -7,6 +7,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [inited, setInited] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   const refreshUser = async () => {
     try {
@@ -63,14 +64,24 @@ export function AuthProvider({ children }) {
   const logout = () => {
     removeTokenPair();
     setUser(null);
+    setSessionExpired(false);
     if (typeof window !== "undefined") { window.location.replace("/login"); }
   };
 
-  if (!inited) { setInited(true); init(); }
+  const dismissSessionExpired = () => {
+    setSessionExpired(false);
+    logout();
+  };
+
+  if (!inited) {
+    setInited(true);
+    setSessionExpiredHandler(() => setSessionExpired(true));
+    init();
+  }
 
   const value = useMemo(
-    () => ({ user, loading, login, register, logout, refreshUser }),
-    [user, loading]
+    () => ({ user, loading, sessionExpired, login, register, logout, refreshUser, dismissSessionExpired }),
+    [user, loading, sessionExpired]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

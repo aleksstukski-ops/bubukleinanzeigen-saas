@@ -7,6 +7,12 @@ let isRefreshing = false;
 let refreshPromise = null;
 const retryQueue = [];
 
+// Called when refresh token is expired/invalid — UI shows a session-expired banner
+let _sessionExpiredHandler = null;
+export function setSessionExpiredHandler(fn) {
+  _sessionExpiredHandler = fn;
+}
+
 function getBaseURL() {
   const envBase = import.meta.env.VITE_API_BASE_URL;
   if (envBase) return envBase;
@@ -130,6 +136,7 @@ api.interceptors.response.use(
     } catch (refreshError) {
       clearTokens();
       flushRetryQueue(refreshError, null);
+      if (_sessionExpiredHandler) _sessionExpiredHandler();
       return Promise.reject(refreshError);
     } finally {
       isRefreshing = false;
