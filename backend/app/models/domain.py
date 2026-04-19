@@ -23,6 +23,7 @@ class Listing(Base):
     image_url: Mapped[str | None] = mapped_column(String(1000))
     url: Mapped[str | None] = mapped_column(String(1000))
     view_count: Mapped[int | None] = mapped_column(Integer)
+    bookmark_count: Mapped[int | None] = mapped_column(Integer, default=0)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     last_scraped_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

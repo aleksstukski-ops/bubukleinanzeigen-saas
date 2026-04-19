@@ -35,6 +35,7 @@ class ListingOut(BaseModel):
     image_url: str | None
     url: str | None
     view_count: int | None
+    bookmark_count: int | None = 0
     expires_at: datetime | None
     is_active: bool
     last_scraped_at: datetime
