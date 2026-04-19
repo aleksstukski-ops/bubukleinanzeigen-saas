@@ -60,6 +60,8 @@ export default function ListingsPage() {
   const [editError, setEditError] = useState("");
   const [activeActionId, setActiveActionId] = useState("");
   const [processingById, setProcessingById] = useState({});
+  const [isStale, setIsStale] = useState(false);
+  const staleTimerRef = { current: null };
 
   const loadListings = async () => {
     setLoading(true);
@@ -74,13 +76,26 @@ export default function ListingsPage() {
           try {
             const response = await api.get(`/listings?account_id=${account.id}`);
             const items = response.data?.items || [];
-            return items.map((listing) => ({ ...listing, accountLabel: account.label }));
+            const result = items.map((listing) => ({ ...listing, accountLabel: account.label }));
+            result._stale = response.data?.stale || false;
+            return result;
           } catch (error) {
             return [];
           }
         })
       );
-      setListings(listingResponses.flat());
+      const allListings = listingResponses.flat();
+      setListings(allListings);
+
+      // Auto-refresh: check if any account returned stale data
+      const anyStale = listingResponses.some((items) => items._stale);
+      setIsStale(anyStale);
+      if (anyStale && staleTimerRef.current === null) {
+        staleTimerRef.current = setTimeout(() => {
+          staleTimerRef.current = null;
+          loadListings();
+        }, 5000);
+      }
     } catch (error) {
       setPageError(getErrorMessage(error));
     } finally {
