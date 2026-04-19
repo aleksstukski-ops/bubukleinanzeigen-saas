@@ -1,11 +1,11 @@
 # Project State
 
-Zuletzt aktualisiert: 2026-04-19
+Zuletzt aktualisiert: 2026-04-19 (Session 5 Stabilisierung)
 
 ## Aktueller Stand
 
-Phase: Sessions 1-4 abgeschlossen + Stabilisierung laeuft
-Naechster Schritt: Alembic Migration fuer bookmark_count, dann Session-Auto-Refresh
+Phase: Sessions 1-4 abgeschlossen + Phase 1 Stabilisierung DONE
+Naechster Schritt: Phase 2 -- Stripe Integration (Task 5+6+7)
 
 ## Was funktioniert
 
@@ -40,9 +40,6 @@ Naechster Schritt: Alembic Migration fuer bookmark_count, dann Session-Auto-Refr
 
 ## Was NICHT funktioniert / offen
 
-- Alembic Migration fuer bookmark_count fehlt (Spalte per SQL manuell hinzugefuegt)
-- Session-Auto-Refresh (JWT laeuft ab -> User wird ausgeloggt statt stiller Refresh)
-- DOM-Haertung (Selektoren koennen bei Kleinanzeigen-Updates brechen)
 - Stripe Integration komplett offen
 - Admin Dashboard komplett offen
 - Push Notifications komplett offen
@@ -58,6 +55,20 @@ Naechster Schritt: Alembic Migration fuer bookmark_count, dann Session-Auto-Refr
 - Selektoren fuer Bump/Delete/Edit gegen Live-DOM pruefen (DOM-Haertung noetig)
 
 ## Session-Log
+
+### 2026-04-19: Phase 1 Stabilisierung abgeschlossen (Tasks 1-3)
+
+Fertiggestellt:
+- Task 1: Alembic Migration 0002_add_bookmark_count (ADD COLUMN IF NOT EXISTS, idempotent)
+- Task 2: Session-Auto-Refresh
+  - api.js: setSessionExpiredHandler() Hook wenn Refresh-Token ungueltig
+  - useAuth.jsx: sessionExpired-State + dismissSessionExpired()
+  - Layout.jsx: Amber-Banner mit "Neu einloggen"-Button statt stillem Logout
+- Task 3: DOM-Haertung
+  - base.py: wait_for_selector_list() rast jetzt alle Selektoren parallel statt sequentiell
+    (vorher worst case 3x10s=30s, jetzt immer max. 10s)
+  - dispatcher.py: Canary-Check nach scrape_listings + scrape_messages
+    (0 Ergebnisse = WARNING + automatischer Debug-Snapshot)
 
 ### 2026-04-19: Stabilisierung
 
