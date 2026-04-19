@@ -25,6 +25,8 @@ class Selectors:
     AD_PRICE = [
         ".aditem-main--middle--price-shipping--price",
         '[class*="price"]',
+        "li.text-title3.text-secondary",
+        'li[class*="text-title3"]',
     ]
 
     AD_IMAGE = [
