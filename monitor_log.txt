@@ -1,9 +1,0 @@
-🚨 [2026-04-17 09:42:20] CHECK3
-Symptom: FAILED job in database
-Output: failed | 1
-Betroffen: BubuKleinanzeigen Service
-
-Redis Queues:
-- jobs:high: 0
-- jobs:normal: 0  
-- jobs:low: 0
