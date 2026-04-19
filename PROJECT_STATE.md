@@ -1,94 +1,121 @@
 # Project State
 
-Zuletzt aktualisiert: 2026-04-16 (Ende Session 2)
+Zuletzt aktualisiert: 2026-04-19
 
 ## Aktueller Stand
 
-Phase: Session 2 abgeschlossen
-Nächster Schritt: Session 3 — Listings UI + Listings-Actions
+Phase: Sessions 1-4 abgeschlossen + Stabilisierung laeuft
+Naechster Schritt: Alembic Migration fuer bookmark_count, dann Session-Auto-Refresh
 
 ## Was funktioniert
 
+### Infrastruktur
 - Alle 5 Docker-Services laufen (postgres, redis, backend, scraper, frontend)
-- Auth-Flow komplett (Register, Login, Refresh, Logout)
-- Kleinanzeigen-Accounts CRUD mit Plan-Limit-Check
-- Job-Queue end-to-end (DB + Redis)
-- Scraper-Worker läuft, wartet auf Jobs
-- Scraper-Foundation: Selectors, BasePage, LoginPage, ListingsPage, SessionManager
-- START_LOGIN, VERIFY_SESSION, SCRAPE_LISTINGS Handler implementiert
-- Frontend: Login, Register, Dashboard, Accounts-Page mit Login-Button
-- Modal funktioniert (Bug in Session 2 gefixt)
-- cli_login.py als Host-CLI für sichtbares Browser-Login vorbereitet
+- bubuanzeigen.de LIVE via Cloudflare Tunnel -> Mac Mini M4
+- GitHub Repo public, alle Agents haben Zugriff
+- SMTP (Gmail App-Passwort) funktioniert
+
+### Auth
+- Register, Login, Refresh, Logout -- komplett
+- Passwort vergessen + Reset via E-Mail -- komplett und getestet
+- JWT Access + Refresh Tokens
+
+### Kleinanzeigen-Accounts
+- CRUD mit Plan-Limit-Check
+- cli_login.py funktioniert (sichtbarer Browser auf Host)
+- FERNET_KEY Persistenz (Commit f511aa2)
+- Session-Encryption/Decryption end-to-end verifiziert
+- Account 4 active, 14 Listings, scrape_listings erfolgreich
+
+### Scraper
+- Alle Handler implementiert und funktional
+- bookmark_count Scraping funktioniert (Commit f66fb6d)
+- Selectors mit Fallback-Cascades
+- Alle Page Objects implementiert
+
+### Frontend
+- Dashboard, Konten, Inserate, Nachrichten -- alle Seiten da
+- Inserate zeigen Views + Bookmark-Count (Herz-Icon)
+- LoginPage sauber (ein Passwort-vergessen-Link)
 
 ## Was NICHT funktioniert / offen
 
-- Sichtbarer Login-Browser nicht getestet (cli_login.py läuft noch nicht scharf)
-- Listings-UI ist Placeholder ("Bald")
-- Nachrichten komplett offen
-- Stripe offen
-- Admin-Dashboard offen
-- Deployment offen
+- Alembic Migration fuer bookmark_count fehlt (Spalte per SQL manuell hinzugefuegt)
+- Session-Auto-Refresh (JWT laeuft ab -> User wird ausgeloggt statt stiller Refresh)
+- DOM-Haertung (Selektoren koennen bei Kleinanzeigen-Updates brechen)
+- Stripe Integration komplett offen
+- Admin Dashboard komplett offen
+- Push Notifications komplett offen
+- Production Deployment (laeuft auf Mac Mini, nicht auf Server)
 
 ## Known Issues
 
-- Erste DB-Migration muss manuell laufen: docker compose exec backend alembic upgrade head
-- GLM-5.1 kann Dateien groesser 2KB nicht zuverlaessig schreiben — Cursor nutzen stattdessen
+- Erste DB-Migration muss manuell: docker compose exec backend alembic upgrade head
+- Docker Service heisst "scraper", NICHT "worker"
+- cli_login.py braucht lokale DATABASE_URL mit 127.0.0.1, nicht "postgres"
+- cli_login.py braucht Python 3.11 venv, nicht System-Python 3.9
+- Smart Quotes von GPT muessen vor Einspielen geprueft werden
+- Selektoren fuer Bump/Delete/Edit gegen Live-DOM pruefen (DOM-Haertung noetig)
 
 ## Session-Log
 
-### 2026-04-16: Session 2 — Scraper-Foundation
+### 2026-04-19: Stabilisierung
 
 Fertiggestellt:
-- selectors.py (Selektor-Cascades mit Regex fuer stabile IDs)
-- pages/base.py (BasePage mit try_selectors, Fallback-Warnings)
-- pages/login_page.py (sichtbarer Login, Session-Capture)
-- pages/listings_page.py (Scrape mit stabilen IDs, UPSERT)
-- services/sessions.py (Fernet-verschluesselte storage_state)
-- session_manager.py komplett (Playwright-Integration, per-Account Locks)
-- dispatcher.py mit echten START_LOGIN, VERIFY_SESSION, SCRAPE_LISTINGS Handlern
-- api/routers/kleinanzeigen_accounts.py (POST /start-login, /refresh, /verify)
-- cli_login.py (Host-CLI fuer visible Login)
-- Frontend: AccountsPage mit Login-Buttons, Status-Badges, Listing-Count
-- Modal.jsx Bug gefixt (Transform-Konflikt, Click-Through)
-- Unicode-Escape-Bugs in AccountsPage behoben
-- api.js Token-Pair-API (storeTokenPair, readTokenPair, removeTokenPair)
-- useAuth.jsx angepasst an neue api.js
+- FERNET_KEY Persistenz-Fix (config.py + crypto.py)
+  - crypto.py nutzt jetzt settings.FERNET_KEY direkt statt SHA256-Ableitung
+  - Defensive isinstance-Check fuer str/bytes
+  - .env.example bereinigt (keine echten E-Mail-Adressen)
+  - Commit: f511aa2
+- bookmark_count end-to-end
+  - Model + Schema hatten bookmark_count schon
+  - Scraper gefixt: nutzt AD_VIEWS Selektor + Regex "(\d+)\s*mal gemerkt"
+  - Frontend zeigt Herz-Icon + Zahl
+  - DB-Spalte per SQL manuell hinzugefuegt (Migration fehlt noch)
+  - Verifiziert: 5 Listings mit bookmark_count > 0 nach Scrape
+  - Commit: f66fb6d
+- Session-Invalidierung + Re-Login fuer Account 4 erfolgreich
+- LoginPage Duplicate-Links geprueft -- war schon sauber
+- cli_login.py geprueft -- braucht keinen Fix (nutzt crypto.py upstream)
+- MASTERPLAN.md erstellt (Gesamtplan fuer alle Agents)
 
-Architektonische Entscheidung (ADR-006):
-- Visible Login als Host-CLI-Subprocess (Option B aus HANDOFF.md Session 2 Plan), nicht im Docker-Container. Grund: X11-Forwarding auf macOS zu fragil fuer MVP.
+Probleme die auftraten:
+- Python-Inline-Script hat listings_page.py mit write(None) zerstoert -> git checkout Recovery
+- sed-Escaping in zsh fehlgeschlagen -> komplette Datei per cat geschrieben
+- docker compose up worker -> Service heisst scraper, nicht worker
+
+### 2026-04-16: Session 3+4 -- Listings + Messages
+
+Fertiggestellt:
+- ListingsPage mit Filter, Suche, Sortierung
+- ListingDetailModal + ListingEditModal
+- MessagesPage (Inbox, Chat-View, Reply, 30s Polling)
+- Alle Dispatcher-Handler
+- Scraper-Fixes (Bilder, Preise, Views, Titel, Reihenfolge)
+
+### 2026-04-16: Session 2 -- Scraper-Foundation
+
+Fertiggestellt:
+- selectors.py, BasePage, LoginPage, ListingsPage
+- SessionManager, Dispatcher
+- Frontend: AccountsPage mit Status-Badges
+
+### 2026-04-16: Session 1 -- Foundation
+
+Fertiggestellt:
+- Docker Compose, Auth-Flow, DB-Schema, API-Skeleton, Frontend-Skeleton
 
 ## Notizen fuer naechsten Agenten
 
-- Cursor statt GLM fuer Datei-Schreiben nutzen
-- GPT liefert portionsweise (max 3 Dateien pro Nachricht)
-- Bei Umlauten IMMER echte Zeichen (ü, ö, ä), nie Escape-Sequenzen (\u00fc)
-- Modal.jsx funktioniert jetzt — nicht mehr anfassen
+- Docker Service-Namen: backend, frontend, postgres, redis, scraper
+- Dateien IMMER lesen vor Aenderung -- nie blind editieren
+- Komplexe Dateiaenderungen: komplette Datei per cat schreiben
+- Kein sed fuer mehrzeilige Aenderungen -- zu fragil in zsh
+- Kimi nur Terminal-Befehle senden, kein Erklaerungstext
+- GPT-Output auf Smart Quotes pruefen
+- bookmark_count Selektor: gleiche DOM-Section wie view_count, Regex-basiert
+- cli_login.py laeuft NUR auf dem Host (nicht in Docker), braucht GUI/DISPLAY
 
 ---
 
-## Session 3 — Listings UI + Listings-Actions (abgeschlossen 2026-04-16)
-
-### Frontend
-- Menüpunkt "Inserate" aktiviert
-- Route /listings
-- ListingsPage mit Filter (Konto), Suche (Titel), Sortierung (Neueste/Preis/Views)
-- ListingDetailModal: Bild, Titel, Preis, Views, Beschreibung, Link, Actions
-- ListingEditModal: Titel/Preis/Beschreibung bearbeitbar
-
-### Backend
-- POST /listings/{id}/bump, PATCH /listings/{id}, DELETE /listings/{id}
-- Neue Schemas: ListingUpdateIn, ListingActionIn, erweitertes ListingOut
-- edit_listing_page.py Page-Object
-- Selektoren für Edit/Delete/Bump mit Fallback-Cascade
-- Dispatcher-Handler: BUMP_LISTING, DELETE_LISTING, UPDATE_LISTING (alle echte Logik)
-
-### Offene Punkte
-- Selektoren für Bump/Delete/Edit gegen Live-DOM prüfen
-- bump_listing/delete_listing nutzen generische Aktions-Selektoren — DOM-Härtung nötig
-
-### ADR-007 (2026-04-16)
-- Listing-Actions bleiben jobbasiert (nicht synchron im Request)
-- Job-Payload nutzt listing_id = kleinanzeigen_id
-- Priorität: BUMP=2, DELETE=3, UPDATE=3
-
----
+Naechste Tasks: Siehe MASTERPLAN.md Abschnitt 7 (Roadmap)

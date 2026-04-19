@@ -2,10 +2,12 @@
 
 Multi-Account Management für Kleinanzeigen.de — als SaaS.
 
-## 👉 Für KI-Agenten
+## Fuer KI-Agenten
 
-**Lies zuerst:** [`HANDOFF.md`](./HANDOFF.md) (Architektur, Regeln, Session-Plan)
+**Lies zuerst:** [`MASTERPLAN.md`](./MASTERPLAN.md) (Gesamtplan, Regeln, Fehler-Katalog, Roadmap)
 **Dann:** [`PROJECT_STATE.md`](./PROJECT_STATE.md) (aktueller Stand)
+**Details:** [`HANDOFF.md`](./HANDOFF.md) (Architektur, Datenmodell, Tech-Stack)
+**History:** [`CHANGELOG.md`](./CHANGELOG.md) (was wann gemacht wurde)
 
 ## 👉 Für den Chef (menschlicher Projekt-Owner)
 
