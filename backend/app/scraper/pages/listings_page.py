@@ -49,6 +49,7 @@ class ListingsPage(BasePage):
 		price = await self.try_text(item, Selectors.AD_PRICE)
 		image_url = await self._extract_image_url(item)
 		view_count = await self._extract_view_count(item)
+		bookmark_count = await self._extract_bookmark_count(item)
 		absolute_url = self._to_absolute_url(href)
 
 		return {
@@ -57,6 +58,7 @@ class ListingsPage(BasePage):
 			"price": price,
 			"image_url": image_url,
 			"view_count": view_count,
+			"bookmark_count": bookmark_count,
 			"url": absolute_url,
 		}
 
@@ -64,7 +66,7 @@ class ListingsPage(BasePage):
 		value = await self.try_attribute(item, Selectors.AD_IMAGE)
 		if not value:
 			return None
-		# srcset format: "url1 1x, url2 2x" — take first URL only
+		# srcset format: "url1 1x, url2 2x" - take first URL only
 		if "," in value:
 			first_candidate = value.split(",")[0].strip()
 		else:
@@ -80,6 +82,22 @@ class ListingsPage(BasePage):
 			return None
 
 		match = re.search(r"(\d+)", text.replace(".", ""))
+		if match is None:
+			return None
+
+		try:
+			return int(match.group(1))
+		except ValueError:
+			return None
+
+	async def _extract_bookmark_count(self, item: ElementHandle) -> int | None:
+		# Bookmark count lives in same section as view count
+		# Text pattern: "X mal gemerkt"
+		text = await self.try_text(item, Selectors.AD_VIEWS)
+		if not text:
+			return None
+
+		match = re.search(r"(\d+)\s*mal gemerkt", text.replace(".", ""))
 		if match is None:
 			return None
 
@@ -125,6 +143,7 @@ class ListingsPage(BasePage):
 			record.price = item.get("price")
 			record.image_url = item.get("image_url")
 			record.view_count = item.get("view_count")
+			record.bookmark_count = item.get("bookmark_count")
 			record.url = item.get("url")
 			record.is_active = True
 			record.last_scraped_at = now
