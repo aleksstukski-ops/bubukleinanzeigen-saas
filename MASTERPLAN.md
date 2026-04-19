@@ -197,16 +197,17 @@ Jede Nachricht an den Chef beginnt mit dem Empfaenger:
 | 8 | Push Notifications (VAPID, Service Worker) | 4h |
 | 9 | Admin Dashboard (User-Liste, Scraper-Health, Fehlerraten) | 6h |
 | 10 | Telegram/E-Mail Alerts bei Scraper-Fehlern | 2h |
+| 11 | Theme-System — User kann Design wählen: Hell, Dunkel, und Farbthemen (Lila, Gelb, Blau, etc.). Farbschema ändert sich tatsächlich komplett (Hintergrund, Cards, Buttons, Nav, Text). Kein einfaches Umfärben sondern durchdesignte Farbwelten. Auswahl in Settings speichern. CSS Variables basiert. | 6h |
 
 ### Phase 4: Production Launch (Session 8)
 
 | # | Task | Aufwand |
 |---|------|---------|
-| 11 | Production-Deploy (Hetzner oder Mac Mini bleibt) | 4h |
-| 12 | Backups (Postgres-Dump taeglich) | 1h |
-| 13 | Monitoring (Uptime Kuma) | 1h |
-| 14 | Rechtliches (Impressum, DSGVO, AGB, Cookie-Banner) | 2h (Chef + Agent) |
-| 15 | Launch-Marketing (Landing Page, Social Media) | Chef |
+| 12 | Production-Deploy (Hetzner oder Mac Mini bleibt) | 4h |
+| 13 | Backups (Postgres-Dump taeglich) | 1h |
+| 14 | Monitoring (Uptime Kuma) | 1h |
+| 15 | Rechtliches (Impressum, DSGVO, AGB, Cookie-Banner) | 2h (Chef + Agent) |
+| 16 | Launch-Marketing (Landing Page, Social Media) | Chef |
 
 ---
 
