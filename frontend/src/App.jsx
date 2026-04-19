@@ -10,6 +10,7 @@ import DashboardPage from "./pages/DashboardPage";
 import AccountsPage from "./pages/AccountsPage";
 import ListingsPage from "./pages/ListingsPage";
 import MessagesPage from "./pages/MessagesPage";
+import BillingPage from "./pages/BillingPage";
 
 export default function App() {
   return (
@@ -28,6 +29,7 @@ export default function App() {
               <Route path="/accounts" element={<AccountsPage />} />
               <Route path="/listings" element={<ListingsPage />} />
               <Route path="/messages" element={<MessagesPage />} />
+              <Route path="/billing" element={<BillingPage />} />
             </Route>
           </Route>
 

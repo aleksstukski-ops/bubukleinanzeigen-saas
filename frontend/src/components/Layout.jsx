@@ -6,6 +6,7 @@ const navItems = [
   { to: "/listings", label: "Inserate", icon: "📋", disabled: false },
   { to: "/messages", label: "Nachrichten", icon: "💬", disabled: false },
   { to: "/accounts", label: "Konten", icon: "⚙️", disabled: false },
+  { to: "/billing", label: "Abrechnung", icon: "💳", disabled: false },
 ];
 
 function NavItem({ item, mobile = false }) {
