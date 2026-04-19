@@ -19,7 +19,7 @@ const PLANS = [
     price: "9",
     period: "/Monat",
     accounts: 1,
-    features: ["1 Kleinanzeigen-Konto", "Inserate & Nachrichten verwalten", "Prioritaets-Support"],
+    features: ["1 Kleinanzeigen-Konto", "Inserate & Nachrichten verwalten", "Prioritäts-Support"],
     cta: "Upgrade auf Starter",
     highlight: false,
   },
@@ -68,7 +68,7 @@ function SuccessBanner({ plan, onDismiss }) {
 function CancelledBanner({ onDismiss }) {
   return (
     <div className="mb-6 flex items-start justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-      <p className="text-sm text-slate-600">{'ℹ️'} Checkout abgebrochen — kein Abonnement wurde geaendert.</p>
+      <p className="text-sm text-slate-600">{'ℹ️'} Checkout abgebrochen — kein Abonnement wurde geändert.</p>
       <button type="button" onClick={onDismiss} className="text-slate-400 hover:text-slate-600 text-lg leading-none">
         {'×'}
       </button>
@@ -167,7 +167,7 @@ export default function BillingPage() {
               key={plan.id}
               onClick={isClickable ? () => handleUpgrade(plan.id) : undefined}
               className={[
-                "relative flex flex-col rounded-xl border p-5 transition hover:border-blue-300 hover:shadow-md",
+                "relative flex flex-col rounded-xl border-2 p-5 transition hover:border-blue-400 hover:shadow-lg",
                 plan.highlight
                   ? "border-blue-300 bg-blue-50 ring-2 ring-blue-200"
                   : "border-slate-300 bg-white",
@@ -236,7 +236,7 @@ export default function BillingPage() {
         <div className="mt-8 rounded-xl border border-slate-200 bg-white p-5">
           <h2 className="text-sm font-semibold text-slate-700">Abonnement verwalten</h2>
           <p className="mt-1 text-sm text-slate-500">
-            Zahlungsmethode aendern, Rechnungen herunterladen oder Abo kuendigen.
+            Zahlungsmethode ändern, Rechnungen herunterladen oder Abo kündigen.
           </p>
           <button
             type="button"
@@ -244,13 +244,13 @@ export default function BillingPage() {
             disabled={portalLoading}
             className="mt-3 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
           >
-            {portalLoading ? "Wird geoeffnet..." : "Stripe-Kundenportal oeffnen"}
+            {portalLoading ? "Wird geöffnet..." : "Stripe-Kundenportal öffnen"}
           </button>
         </div>
       )}
 
       <p className="mt-6 text-center text-xs text-slate-400">
-        Alle Preise inkl. MwSt. {'·'} Monatlich kuendbar {'·'} Zahlung ueber Stripe
+        Alle Preise inkl. MwSt. {'·'} Monatlich kündbar {'·'} Zahlung über Stripe
       </p>
     </div>
   );
