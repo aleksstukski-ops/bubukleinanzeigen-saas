@@ -93,3 +93,8 @@ postgres_data/
 .Spotlight-V100
 .Trashes
 ehthumbs.db
+
+# Kimi/OpenClaw artifacts
+check3-state.json
+monitor_log.txt
+scripts/health-check.sh
