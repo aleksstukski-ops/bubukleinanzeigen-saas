@@ -34,3 +34,12 @@ class UserOut(BaseModel):
     account_limit: int
     subscription_expires_at: datetime | None
     created_at: datetime
+
+
+class PasswordResetRequestIn(BaseModel):
+    email: str
+
+
+class PasswordResetIn(BaseModel):
+    token: str
+    password: str = Field(min_length=8)

@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from app.services.email import send_email
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user
 from app.core.security import create_access_token, create_refresh_token, decode_token, hash_password, verify_password
 from app.db.session import get_db
 from app.models import User
-from app.schemas.auth import RefreshTokenIn, TokenPair, UserLoginIn, UserOut, UserRegisterIn
+from app.schemas.auth import PasswordResetIn, PasswordResetRequestIn, RefreshTokenIn, TokenPair, UserLoginIn, UserOut, UserRegisterIn
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -58,3 +59,50 @@ async def me(user: User = Depends(get_current_user)):
         subscription_expires_at=user.subscription_expires_at,
         created_at=user.created_at,
     )
+
+
+@router.post("/forgot-password")
+async def forgot_password(data: PasswordResetRequestIn, db: AsyncSession = Depends(get_db)):
+
+    result = await db.execute(select(User).where(User.email == data.email))
+    user = result.scalar_one_or_none()
+    # Always return success to prevent email enumeration
+    if not user:
+        return {"success": True}
+
+    token = create_access_token(user.id, expires_minutes=30)
+    reset_url = f"https://bubuanzeigen.de/reset-password?token={token}"
+
+    send_email(
+        to=user.email,
+        subject="BubuKleinanzeigen - Passwort zurücksetzen",
+        body_html=f"""
+        <h2>Passwort zurücksetzen</h2>
+        <p>Klicke auf den Link um dein Passwort zurückzusetzen:</p>
+        <p><a href="{reset_url}">{reset_url}</a></p>
+        <p>Der Link ist 30 Minuten gültig.</p>
+        <p>Falls du kein Passwort-Reset angefordert hast, ignoriere diese E-Mail.</p>
+        """,
+    )
+    return {"success": True}
+
+
+@router.post("/reset-password")
+async def reset_password(data: PasswordResetIn, db: AsyncSession = Depends(get_db)):
+
+    payload = decode_token(data.token, expected_type="access")
+    if payload is None:
+        raise HTTPException(status_code=400, detail="Ungültiger oder abgelaufener Link")
+    try:
+        user_id = int(payload["sub"])
+    except (KeyError, ValueError):
+        raise HTTPException(status_code=400, detail="Ungültiger Token")
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=400, detail="Benutzer nicht gefunden")
+
+    user.password_hash = hash_password(data.password)
+    await db.commit()
+    return {"success": True}

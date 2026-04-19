@@ -20,6 +20,13 @@ class Settings(BaseSettings):
     SCRAPER_MAX_CONCURRENT_ACCOUNTS: int = 5
     SCRAPER_SESSION_DIR: str = "/app/storage/sessions"
 
+    # SMTP
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = ""
+
     @property
     def allowed_origins_list(self):
         return [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]

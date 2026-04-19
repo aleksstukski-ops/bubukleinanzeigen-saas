@@ -66,13 +66,16 @@ export default function LoginPage() {
             ) : null}
 
             <button type="submit" className="btn-primary w-full" disabled={submitting}>
-              {submitting ? "Anmeldung l\u00e4uft..." : "Anmelden"}
+              {submitting ? "Anmeldung läuft..." : "Anmelden"}
             </button>
           </form>
 
           <div className="mt-6 text-sm text-slate-500">
             Noch kein Konto?{" "}
             <Link className="font-medium text-blue-600 hover:text-blue-700" to="/register">Jetzt registrieren</Link>
+          </div>
+          <div className="mt-3 text-sm text-slate-500">
+            <Link className="font-medium text-blue-600 hover:text-blue-700" to="/forgot-password">Passwort vergessen?</Link>
           </div>
         </div>
       </div>
