@@ -25,6 +25,7 @@ export default defineConfig({
     }),
   ],
   server: {
+    allowedHosts: ["bubuanzeigen.de", "www.bubuanzeigen.de"],
     host: "127.0.0.1",
     port: 3000,
     proxy: {
