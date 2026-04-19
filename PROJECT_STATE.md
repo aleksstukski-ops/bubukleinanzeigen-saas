@@ -4,8 +4,8 @@ Zuletzt aktualisiert: 2026-04-19 (Session 5 Stabilisierung)
 
 ## Aktueller Stand
 
-Phase: Sessions 1-4 abgeschlossen + Phase 1 Stabilisierung DONE
-Naechster Schritt: Phase 2 -- Stripe Integration (Task 5+6+7)
+Phase: Phase 2 Stripe Integration DONE (Tasks 6+7)
+Naechster Schritt: Stripe-Konto + Produkte anlegen (Task 5, macht Chef), dann .env befuellen
 
 ## Was funktioniert
 
@@ -40,7 +40,9 @@ Naechster Schritt: Phase 2 -- Stripe Integration (Task 5+6+7)
 
 ## Was NICHT funktioniert / offen
 
-- Stripe Integration komplett offen
+- Stripe-Konto + Produkte noch nicht angelegt (Task 5, macht Chef manuell)
+- .env muss mit echten Stripe-Keys befuellt werden (STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PRICE_*)
+- Stripe-Webhook-URL bei Stripe registrieren: https://bubuanzeigen.de/api/billing/webhook
 - Admin Dashboard komplett offen
 - Push Notifications komplett offen
 - Production Deployment (laeuft auf Mac Mini, nicht auf Server)
@@ -55,6 +57,26 @@ Naechster Schritt: Phase 2 -- Stripe Integration (Task 5+6+7)
 - Selektoren fuer Bump/Delete/Edit gegen Live-DOM pruefen (DOM-Haertung noetig)
 
 ## Session-Log
+
+### 2026-04-19: Phase 2 Stripe Integration (Tasks 6+7)
+
+Fertiggestellt:
+- stripe 11.4.1 in requirements.txt
+- config.py: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PRICE_*, FRONTEND_URL
+- schemas/auth.py: UserOut hat jetzt subscription_status
+- billing.py Router: POST /api/billing/checkout-session, /portal, /webhook
+  - checkout-session erstellt Stripe-Customer bei Erstbesuch, leitet zu Stripe Checkout weiter
+  - portal oeffnet Stripe Customer Portal (Kuendigung, Zahlungsdaten)
+  - webhook verarbeitet checkout.session.completed, subscription.updated/deleted
+  - Bei Kuendigung/Ablauf -> User wird auf Free zurueckgesetzt
+- BillingPage.jsx: Plan-Karten (Free/Starter/Pro/Business), Upgrade-Buttons, Success/Cancel-Banner
+- Nav: 'Abrechnung' 💳 als 5. Eintrag
+- .env.example: Stripe-Variablen dokumentiert
+
+Was noch fehlt (manuell durch Chef):
+- Stripe-Konto + Produkte anlegen
+- .env befuellen + Container neu starten
+- Webhook-URL bei Stripe registrieren: https://bubuanzeigen.de/api/billing/webhook
 
 ### 2026-04-19: Phase 1 Stabilisierung abgeschlossen (Tasks 1-3)
 
