@@ -233,6 +233,16 @@ async def _handle_scrape_listings(job: Job, db: AsyncSession, session_manager: S
 
         scraped_items = await listings_page.scrape()
 
+        # Canary: 0 results on an active account likely means DOM changed
+        if len(scraped_items) == 0:
+            log.warning(
+                "Canary alert: 0 listings scraped for account %s — possible DOM change",
+                account.id,
+            )
+            snapshot_path = await session_manager.capture_debug_snapshot(account.id, job.id)
+            if snapshot_path:
+                log.warning("Debug snapshot saved at: %s", snapshot_path)
+
         existing_result = await db.execute(select(Listing).where(Listing.account_id == account.id))
         existing_records = existing_result.scalars().all()
         existing_by_ka_id = {record.kleinanzeigen_id: record for record in existing_records}
@@ -278,6 +288,16 @@ async def _handle_scrape_messages(job: Job, db: AsyncSession, session_manager: S
                 log.warning("Logged-in marker not found for account %s before scraping messages", account.id)
 
             scraped_items = await messages_page.scrape_conversations()
+
+            # Canary: 0 conversations may indicate DOM change
+            if len(scraped_items) == 0:
+                log.warning(
+                    "Canary alert: 0 conversations scraped for account %s — possible DOM change",
+                    account.id,
+                )
+                snapshot_path = await session_manager.capture_debug_snapshot(account.id, job.id)
+                if snapshot_path:
+                    log.warning("Debug snapshot saved at: %s", snapshot_path)
 
             existing_result = await db.execute(select(Conversation).where(Conversation.account_id == account.id))
             existing_records = existing_result.scalars().all()

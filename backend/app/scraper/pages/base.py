@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Iterable
 
@@ -20,23 +21,55 @@ class BasePage:
 		timeout: int = 10000,
 		strict: bool = False,
 	) -> str:
+		"""Wait for the first matching selector out of a fallback list.
+
+		All selectors are tried in parallel so total wait time equals
+		the timeout of a single selector, not timeout * len(selectors).
+		"""
 		selector_list = list(selectors)
 		if not selector_list:
 			raise ValueError("selectors must not be empty")
 
-		last_error = None
-		for index, selector in enumerate(selector_list):
-			try:
-				await self.page.wait_for_selector(selector, timeout=timeout, state="attached")
-				if index > 0:
-					self.log.warning("Selector fallback hit: %s", selector)
-				return selector
-			except PlaywrightTimeoutError as exc:
-				last_error = exc
+		if len(selector_list) == 1:
+			await self.page.wait_for_selector(selector_list[0], timeout=timeout, state="attached")
+			return selector_list[0]
 
-		raise PlaywrightTimeoutError(
-			f"None of the selectors matched within timeout: {selector_list}"
-		) from last_error
+		async def _try(sel: str) -> str:
+			await self.page.wait_for_selector(sel, timeout=timeout, state="attached")
+			return sel
+
+		tasks: list[asyncio.Task[str]] = [
+			asyncio.create_task(_try(sel)) for sel in selector_list
+		]
+		winner: str | None = None
+		try:
+			done, _ = await asyncio.wait(
+				tasks,
+				return_when=asyncio.FIRST_COMPLETED,
+				timeout=timeout / 1000,
+			)
+			for task in done:
+				if not task.cancelled() and task.exception() is None:
+					winner = task.result()
+					break
+		finally:
+			# Cancel all remaining tasks to avoid dangling background work
+			for task in tasks:
+				if not task.done():
+					task.cancel()
+			await asyncio.gather(*[t for t in tasks if not t.done()], return_exceptions=True)
+
+		if winner is None:
+			raise PlaywrightTimeoutError(
+				f"None of the selectors matched within timeout: {selector_list}"
+			)
+
+		idx = selector_list.index(winner)
+		if idx > 0:
+			self.log.warning(
+				"Selector fallback hit: %s (primary: %s)", winner, selector_list[0]
+			)
+		return winner
 
 	async def try_selectors(
 		self,
