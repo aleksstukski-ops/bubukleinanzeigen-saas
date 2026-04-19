@@ -32,6 +32,7 @@ class UserOut(BaseModel):
     is_active: bool
     plan: str
     account_limit: int
+    subscription_status: str | None
     subscription_expires_at: datetime | None
     created_at: datetime
 

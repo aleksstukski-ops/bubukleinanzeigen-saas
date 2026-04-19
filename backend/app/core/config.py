@@ -28,6 +28,14 @@ class Settings(BaseSettings):
  SMTP_PASSWORD: str = ""
  SMTP_FROM: str = ""
 
+ # Stripe
+ STRIPE_SECRET_KEY: str = ""
+ STRIPE_WEBHOOK_SECRET: str = ""
+ STRIPE_PRICE_STARTER: str = ""
+ STRIPE_PRICE_PRO: str = ""
+ STRIPE_PRICE_BUSINESS: str = ""
+ FRONTEND_URL: str = "https://bubuanzeigen.de"
+
  @property
  def allowed_origins_list(self):
   return [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]

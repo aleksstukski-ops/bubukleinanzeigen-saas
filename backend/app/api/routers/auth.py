@@ -56,6 +56,7 @@ async def me(user: User = Depends(get_current_user)):
         id=user.id, email=user.email, full_name=user.full_name,
         is_active=user.is_active, plan=user.plan,
         account_limit=user.account_limit,
+        subscription_status=user.subscription_status,
         subscription_expires_at=user.subscription_expires_at,
         created_at=user.created_at,
     )
