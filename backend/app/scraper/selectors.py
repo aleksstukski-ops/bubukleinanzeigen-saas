@@ -37,6 +37,8 @@ class Selectors:
     ]
 
     AD_VIEWS = [
+        'section.text-onSurfaceNonessential',
+        'section[class*="text-bodySmall"][class*="Nonessential"]',
         '.aditem-main--bottom [class*="views"]',
         '[class*="counter-value"]',
     ]
