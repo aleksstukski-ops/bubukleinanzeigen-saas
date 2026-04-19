@@ -56,26 +56,39 @@ async def create_checkout_session(
             detail="Stripe-Preise noch nicht konfiguriert",
         )
 
-    # Create Stripe customer on first checkout
-    customer_id = user.stripe_customer_id
-    if not customer_id:
-        customer = stripe.Customer.create(
-            email=user.email,
-            metadata={"user_id": str(user.id)},
-        )
-        user.stripe_customer_id = customer.id
-        await db.commit()
-        customer_id = customer.id
+    try:
+        # Create Stripe customer on first checkout
+        customer_id = user.stripe_customer_id
+        if not customer_id:
+            customer = stripe.Customer.create(
+                email=user.email,
+                metadata={"user_id": str(user.id)},
+            )
+            user.stripe_customer_id = customer.id
+            await db.commit()
+            customer_id = customer.id
 
-    session = stripe.checkout.Session.create(
-        customer=customer_id,
-        mode="subscription",
-        line_items=[{"price": price_id, "quantity": 1}],
-        success_url=f"{settings.FRONTEND_URL}/billing?success=1&plan={plan}",
-        cancel_url=f"{settings.FRONTEND_URL}/billing?cancelled=1",
-        metadata={"user_id": str(user.id), "plan": plan},
-        allow_promotion_codes=True,
-    )
+        session = stripe.checkout.Session.create(
+            customer=customer_id,
+            mode="subscription",
+            line_items=[{"price": price_id, "quantity": 1}],
+            success_url=f"{settings.FRONTEND_URL}/billing?success=1&plan={plan}",
+            cancel_url=f"{settings.FRONTEND_URL}/billing?cancelled=1",
+            metadata={"user_id": str(user.id), "plan": plan},
+            allow_promotion_codes=True,
+        )
+    except stripe.AuthenticationError:
+        log.error("Stripe API key invalid — check STRIPE_SECRET_KEY in .env")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Stripe-Konfiguration fehlerhaft. Bitte Administrator kontaktieren.",
+        )
+    except stripe.StripeError as exc:
+        log.error("Stripe error during checkout: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Stripe-Fehler: {exc.user_message or str(exc)}",
+        )
 
     return {"url": session.url}
 
@@ -92,10 +105,23 @@ async def create_portal_session(
             detail="Kein aktives Abonnement gefunden",
         )
 
-    session = stripe.billing_portal.Session.create(
-        customer=user.stripe_customer_id,
-        return_url=f"{settings.FRONTEND_URL}/billing",
-    )
+    try:
+        session = stripe.billing_portal.Session.create(
+            customer=user.stripe_customer_id,
+            return_url=f"{settings.FRONTEND_URL}/billing",
+        )
+    except stripe.AuthenticationError:
+        log.error("Stripe API key invalid — check STRIPE_SECRET_KEY in .env")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Stripe-Konfiguration fehlerhaft. Bitte Administrator kontaktieren.",
+        )
+    except stripe.StripeError as exc:
+        log.error("Stripe error during portal session: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Stripe-Fehler: {exc.user_message or str(exc)}",
+        )
     return {"url": session.url}
 
 

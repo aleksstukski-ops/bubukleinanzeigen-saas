@@ -160,15 +160,19 @@ export default function BillingPage() {
           const isCurrent = currentPlan === plan.id;
           const isDowngrade = PLANS.findIndex(p => p.id === plan.id) < PLANS.findIndex(p => p.id === currentPlan);
 
+          const isClickable = plan.cta && !isCurrent && !isDowngrade;
+
           return (
             <div
               key={plan.id}
+              onClick={isClickable ? () => handleUpgrade(plan.id) : undefined}
               className={[
-                "relative flex flex-col rounded-xl border p-5",
+                "relative flex flex-col rounded-xl border p-5 transition",
                 plan.highlight
                   ? "border-blue-300 bg-blue-50 ring-2 ring-blue-200"
                   : "border-slate-200 bg-white",
                 isCurrent ? "ring-2 ring-emerald-300 border-emerald-300" : "",
+                isClickable ? "cursor-pointer hover:shadow-md active:scale-[0.99]" : "",
               ].join(" ")}
             >
               {plan.highlight && !isCurrent && (
