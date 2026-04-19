@@ -43,6 +43,9 @@ class ListingsPage(BasePage):
 			return None
 
 		title = await self.try_text(item, Selectors.AD_TITLE)
+		if title and title.startswith("Anzeige "):
+			title = title[len("Anzeige "):]
+
 		price = await self.try_text(item, Selectors.AD_PRICE)
 		image_url = await self._extract_image_url(item)
 		view_count = await self._extract_view_count(item)
@@ -61,14 +64,15 @@ class ListingsPage(BasePage):
 		value = await self.try_attribute(item, Selectors.AD_IMAGE)
 		if not value:
 			return None
-
+		# srcset format: "url1 1x, url2 2x" — take first URL only
 		if "," in value:
 			first_candidate = value.split(",")[0].strip()
-			if " " in first_candidate:
-				return first_candidate.split(" ")[0].strip()
-			return first_candidate
-
-		return value.strip()
+		else:
+			first_candidate = value.strip()
+		# Remove size descriptor like "2x", "1x", "300w"
+		if " " in first_candidate:
+			return first_candidate.split(" ")[0].strip()
+		return first_candidate
 
 	async def _extract_view_count(self, item: ElementHandle) -> int | None:
 		text = await self.try_text(item, Selectors.AD_VIEWS)
