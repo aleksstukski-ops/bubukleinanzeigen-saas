@@ -1,16 +1,20 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 
+// All nav items shown in desktop sidebar
 const navItems = [
-  { to: "/dashboard", label: "Dashboard", icon: "🏠", disabled: false },
-  { to: "/listings", label: "Inserate", icon: "📋", disabled: false },
-  { to: "/messages", label: "Nachrichten", icon: "💬", disabled: false },
-  { to: "/accounts", label: "Konten", icon: "⚙️", disabled: false },
-  { to: "/billing", label: "Abrechnung", icon: "💳", disabled: false },
-  { to: "/settings", label: "Einstellungen", icon: "🎨", disabled: false },
+  { to: "/dashboard", label: "Dashboard", icon: "🏠" },
+  { to: "/listings", label: "Inserate", icon: "📋" },
+  { to: "/messages", label: "Nachrichten", icon: "💬" },
+  { to: "/accounts", label: "Konten", icon: "⚙️" },
+  { to: "/billing", label: "Abrechnung", icon: "💳" },
+  { to: "/settings", label: "Einstellungen", icon: "🎨" },
 ];
 
-const adminNavItem = { to: "/admin", label: "Admin", icon: "🛡️", disabled: false };
+// Mobile bottom nav shows only the 5 most important items (375px limit)
+const mobileNavItems = navItems.slice(0, 5);
+
+const adminNavItem = { to: "/admin", label: "Admin", icon: "🛡️" };
 
 function NavItem({ item, mobile = false }) {
   if (item.disabled) {
@@ -112,10 +116,9 @@ export default function Layout() {
         style={{ background: "var(--surface)", borderColor: "var(--border)", paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
         <div className="mx-auto flex max-w-screen-sm items-center justify-around gap-1 px-2 py-2">
-          {navItems.map((item) => (
+          {mobileNavItems.map((item) => (
             <NavItem key={item.to} item={item} mobile />
           ))}
-          {user?.is_admin && <NavItem item={adminNavItem} mobile />}
         </div>
       </nav>
     </div>

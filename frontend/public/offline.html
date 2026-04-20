@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Keine Verbindung – BubuKleinanzeigen</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f8fafc;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100dvh;
+      padding: 1.5rem;
+    }
+    .card {
+      max-width: 380px;
+      width: 100%;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.75rem;
+      padding: 2rem;
+      text-align: center;
+    }
+    .icon { font-size: 3rem; }
+    h1 { margin-top: 1rem; font-size: 1.25rem; font-weight: 600; }
+    p { margin-top: 0.75rem; font-size: 0.875rem; color: #64748b; line-height: 1.5; }
+    button {
+      margin-top: 1.5rem;
+      width: 100%;
+      padding: 0.625rem 1rem;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    button:hover { background: #1d4ed8; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">📡</div>
+    <h1>Keine Internetverbindung</h1>
+    <p>Es konnte keine Verbindung zum Server hergestellt werden. Bitte prüfe deine Internetverbindung und versuche es erneut.</p>
+    <button onclick="location.reload()">Erneut versuchen</button>
+  </div>
+</body>
+</html>

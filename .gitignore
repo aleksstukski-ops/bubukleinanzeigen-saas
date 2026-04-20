@@ -77,6 +77,8 @@ backend/storage/*.html
 # Scraper debug artifacts
 debug/
 *.png
+# PWA icons are tracked
+!frontend/public/*.png
 
 # SQLite local dev DBs
 *.sqlite

@@ -63,6 +63,41 @@
   --accent-text: #c2410c;
 }
 
+/* ── Dark mode overrides for hardcoded Tailwind slate/white ─────
+   Components use inline Tailwind classes (bg-slate-50, text-slate-900, etc.)
+   These rules remap them when .dark is active, without touching each JSX file.
+   Specificity 0,2,0 beats Tailwind utility 0,1,0 — no !important needed.
+   ──────────────────────────────────────────────────────────────── */
+.dark .bg-white { background-color: var(--surface); }
+.dark .bg-slate-50 { background-color: var(--surface-subtle); }
+.dark .bg-slate-100 { background-color: color-mix(in srgb, var(--surface-subtle) 70%, var(--border) 30%); }
+.dark .bg-slate-200 { background-color: var(--border); }
+
+.dark .text-slate-900 { color: var(--text); }
+.dark .text-slate-800 { color: var(--text); }
+.dark .text-slate-700 { color: var(--text); }
+.dark .text-slate-600 { color: var(--text-muted); }
+.dark .text-slate-500 { color: var(--text-muted); }
+.dark .text-slate-400 { color: var(--text-subtle); }
+
+.dark .border-slate-200 { border-color: var(--border); }
+.dark .border-slate-300 { border-color: var(--border); }
+
+/* Card hover/focus variants */
+.dark .hover\:bg-slate-50:hover { background-color: var(--surface-subtle); }
+.dark .hover\:bg-slate-100:hover { background-color: color-mix(in srgb, var(--surface-subtle) 70%, var(--border) 30%); }
+
+/* Selected state in messages list */
+.dark .bg-blue-50 { background-color: color-mix(in srgb, var(--accent-bg) 60%, var(--surface)); }
+.dark .border-blue-300 { border-color: var(--accent); }
+.dark .text-blue-700 { color: var(--accent); }
+.dark .text-blue-600 { color: var(--accent); }
+
+/* Error/success states keep their colors in dark mode (intentional) */
+
+/* Animate pulse in dark mode */
+.dark .bg-slate-100.animate-pulse { background-color: var(--border); }
+
 /* ── Base ─────────────────────────────────────────────────────── */
 @layer base {
   html,
