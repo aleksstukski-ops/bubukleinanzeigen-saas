@@ -62,6 +62,10 @@ export default function ListingsPage() {
   const [processingById, setProcessingById] = useState({});
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState({ title: "", description: "", price: "", category_id: "", location: "", account_id: "" });
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createError, setCreateError] = useState("");
 
   const handleExportCsv = () => {
     if (filteredListings.length === 0) return;
@@ -235,6 +239,37 @@ export default function ListingsPage() {
     }
   };
 
+  const openCreateModal = () => {
+    const defaultAccountId = accounts.length > 0 ? String(accounts[0].id) : "";
+    setCreateForm({ title: "", description: "", price: "", category_id: "", location: "", account_id: defaultAccountId });
+    setCreateError("");
+    setCreateOpen(true);
+  };
+
+  const handleCreateSubmit = async (e) => {
+    e.preventDefault();
+    if (!createForm.title.trim()) { setCreateError("Titel ist erforderlich."); return; }
+    if (!createForm.account_id) { setCreateError("Konto ausw\u00e4hlen."); return; }
+    setCreateLoading(true);
+    setCreateError("");
+    try {
+      await api.post("/listings/create", {
+        account_id: Number(createForm.account_id),
+        title: createForm.title.trim(),
+        description: createForm.description.trim() || null,
+        price: createForm.price.trim() || null,
+        category_id: createForm.category_id.trim() || null,
+        location: createForm.location.trim() || null,
+      });
+      setCreateOpen(false);
+      setPageNotice("Inserat wird erstellt. Dauert ca. 30 Sekunden.");
+    } catch (error) {
+      setCreateError(getErrorMessage(error));
+    } finally {
+      setCreateLoading(false);
+    }
+  };
+
   const handleBulkAction = async (action) => {
     if (selectedIds.size === 0) return;
     setBulkLoading(true);
@@ -264,7 +299,10 @@ export default function ListingsPage() {
               <h1 className="text-2xl font-semibold text-slate-900">Inserate</h1>
               <p className="mt-2 text-sm text-slate-500">Alle Inserate aus deinen aktiven Konten in einer Übersicht.</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={openCreateModal} disabled={loading || accounts.length === 0} className="btn-primary">
+                {"+"} Erstellen
+              </button>
               <button type="button" onClick={handleExportCsv} disabled={loading || listings.length === 0} className="btn-secondary">
                 {"📥"} CSV
               </button>
@@ -455,6 +493,106 @@ export default function ListingsPage() {
         onClose={() => { setEditOpen(false); setEditError(""); }}
         onSubmit={handleEditSubmit}
       />
+
+      {/* Create listing panel */}
+      <div
+        style={{
+          transform: createOpen ? 'translate3d(0,0,0)' : 'translate3d(100%,0,0)',
+          pointerEvents: createOpen ? 'auto' : 'none',
+        }}
+        className="fixed inset-0 z-50 transition-transform duration-200"
+      >
+        <div className="absolute inset-0 bg-black/40" onClick={() => setCreateOpen(false)} />
+        <div className="absolute inset-y-0 right-0 flex w-full max-w-md flex-col bg-white shadow-xl">
+          <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+            <h2 className="text-lg font-semibold">Neues Inserat erstellen</h2>
+            <button type="button" className="text-2xl leading-none text-slate-400 hover:text-slate-700" onClick={() => setCreateOpen(false)}>{"×"}</button>
+          </div>
+          <form onSubmit={handleCreateSubmit} className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-4">
+            <p className="text-sm text-slate-500">
+              {"⚠️"} Kleinanzeigen nutzt einen mehrstufigen Kategorie-Assistenten. Ohne <code>category_id</code> stoppt das Formular bei der Kategorie-Auswahl. Am besten zuerst manuell eine Kategorie-ID ermitteln.
+            </p>
+
+            <div>
+              <label className="label">Konto *</label>
+              <select
+                value={createForm.account_id}
+                onChange={(e) => setCreateForm((f) => ({ ...f, account_id: e.target.value }))}
+                className="input"
+                required
+              >
+                <option value="">Konto w{"\u00e4"}hlen...</option>
+                {accounts.map((a) => (
+                  <option key={a.id} value={String(a.id)}>{a.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="label">Titel *</label>
+              <input
+                type="text"
+                value={createForm.title}
+                onChange={(e) => setCreateForm((f) => ({ ...f, title: e.target.value }))}
+                className="input"
+                placeholder="z.B. iPhone 14 128GB"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="label">Kategorie-ID (optional)</label>
+              <input
+                type="text"
+                value={createForm.category_id}
+                onChange={(e) => setCreateForm((f) => ({ ...f, category_id: e.target.value }))}
+                className="input"
+                placeholder="z.B. 161 (Handys)"
+              />
+            </div>
+
+            <div>
+              <label className="label">Preis (optional)</label>
+              <input
+                type="text"
+                value={createForm.price}
+                onChange={(e) => setCreateForm((f) => ({ ...f, price: e.target.value }))}
+                className="input"
+                placeholder="z.B. 250 EUR"
+              />
+            </div>
+
+            <div>
+              <label className="label">Ort (optional)</label>
+              <input
+                type="text"
+                value={createForm.location}
+                onChange={(e) => setCreateForm((f) => ({ ...f, location: e.target.value }))}
+                className="input"
+                placeholder="z.B. Berlin"
+              />
+            </div>
+
+            <div>
+              <label className="label">Beschreibung (optional)</label>
+              <textarea
+                value={createForm.description}
+                onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))}
+                className="input min-h-[120px] resize-y"
+                placeholder="Zustand, Details, Infos..."
+              />
+            </div>
+
+            {createError ? (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{createError}</div>
+            ) : null}
+
+            <button type="submit" className="btn-primary w-full" disabled={createLoading}>
+              {createLoading ? "Wird erstellt..." : "Inserat erstellen"}
+            </button>
+          </form>
+        </div>
+      </div>
     </>
   );
 }

@@ -219,10 +219,50 @@ class Selectors:
     ]
 
 
+    # Create listing form selectors (best-guess, verify against live DOM if needed)
+    CREATE_TITLE_INPUT = [
+        'input[name="title"]',
+        'input[id*="title"]',
+        'input[placeholder*="Titel"]',
+        '#ad-title',
+    ]
+
+    CREATE_DESCRIPTION_INPUT = [
+        'textarea[name="description"]',
+        'textarea[id*="description"]',
+        'textarea[placeholder*="Beschreibung"]',
+        '#ad-description',
+    ]
+
+    CREATE_PRICE_INPUT = [
+        'input[name="price"]',
+        'input[id*="price"]',
+        'input[inputmode="numeric"]',
+        '#ad-price',
+    ]
+
+    CREATE_SUBMIT_BUTTON = [
+        'button[type="submit"][data-testid*="submit"]',
+        'button[type="submit"]:has-text("Anzeige aufgeben")',
+        'button[type="submit"]:has-text("Jetzt einstellen")',
+        'button[type="submit"]:has-text("Veröffentlichen")',
+        'button[type="submit"]',
+    ]
+
+    CREATE_SUCCESS_MARKER = [
+        'text="Anzeige wurde eingestellt"',
+        'text="Deine Anzeige ist online"',
+        'text="erfolgreich eingestellt"',
+        '[class*="success"]',
+    ]
+
+
 class UrlPatterns:
     LOGIN_URL = "https://www.kleinanzeigen.de/m-einloggen.html"
     MY_ADS_URL = "https://www.kleinanzeigen.de/m-meine-anzeigen.html?tab=ADS"
     MY_ADS_BASE_URL = "https://www.kleinanzeigen.de/m-meine-anzeigen.html"
+    CREATE_LISTING_URL = "https://www.kleinanzeigen.de/m-anzeige-aufgeben.html"
+    CREATE_LISTING_WITH_CATEGORY_URL = "https://www.kleinanzeigen.de/m-anzeige-aufgeben.html?categoryId={category_id}"
     EDIT_LISTING_URL_TEMPLATE = "https://www.kleinanzeigen.de/m-anzeige-bearbeiten.html?adId={listing_id}"
     MESSAGES_URL = "https://www.kleinanzeigen.de/m-nachrichten.html"
 

@@ -117,6 +117,15 @@ class SendMessageIn(BaseModel):
     body: str = Field(min_length=1, max_length=4000)
 
 
+class CreateListingIn(BaseModel):
+    account_id: int
+    title: str = Field(min_length=1, max_length=500)
+    description: str | None = Field(default=None, max_length=10000)
+    price: str | None = Field(default=None, max_length=64)
+    category_id: str | None = Field(default=None, max_length=64)
+    location: str | None = Field(default=None, max_length=128)
+
+
 class JobOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

@@ -11,6 +11,7 @@ from app.models.domain import ListingStat
 from app.schemas.resources import (
     BulkActionIn,
     BumpScheduleIn,
+    CreateListingIn,
     JobOut,
     ListingActionIn,
     ListingListResponse,
@@ -106,6 +107,31 @@ async def list_listings(
         await enqueue_job(db, JobType.SCRAPE_LISTINGS, account_id=account.id, priority=5)
 
     return ListingListResponse(items=listings, stale=is_stale, last_updated=last_updated)
+
+
+@router.post("/create", response_model=JobOut)
+async def create_listing(
+    payload: CreateListingIn,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Enqueue a CREATE_LISTING job that uses Playwright to post a new ad."""
+    account = await _get_account_for_user(db, account_id=payload.account_id, user_id=user.id)
+
+    job = await enqueue_job(
+        db,
+        JobType.CREATE_LISTING,
+        account_id=account.id,
+        payload={
+            "title": payload.title,
+            "description": payload.description,
+            "price": payload.price,
+            "category_id": payload.category_id,
+            "location": payload.location,
+        },
+        priority=3,
+    )
+    return job
 
 
 @router.post("/bulk-action", response_model=list[JobOut])

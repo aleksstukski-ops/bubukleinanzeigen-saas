@@ -509,6 +509,70 @@ async def _handle_send_message(job: Job, db: AsyncSession, session_manager: Sess
             await session_manager.close_account(account.id, headless=True)
 
 
+async def _handle_create_listing(job: Job, db: AsyncSession, session_manager: SessionManager) -> dict[str, Any]:
+    title = str(job.payload.get("title") or "").strip()
+    if not title:
+        raise JobError("Job payload is missing title", recoverable=False)
+
+    description_value = job.payload.get("description")
+    price_value = job.payload.get("price")
+    category_id = str(job.payload.get("category_id") or "").strip() or None
+    location_value = job.payload.get("location")
+
+    description = str(description_value).strip() if description_value is not None else None
+    price = str(price_value).strip() if price_value is not None else None
+    location = str(location_value).strip() if location_value is not None else None
+
+    async with session_manager.lock(job.account_id):
+        account, page = await _get_authenticated_page(job=job, db=db, session_manager=session_manager)
+
+        from app.scraper.pages.create_listing_page import CreateListingPage
+        create_page = CreateListingPage(page)
+
+        try:
+            await create_page.open(category_id=category_id)
+
+            if any(pattern in page.url for pattern in UrlPatterns.LOGIN_REQUIRED_PATTERNS):
+                await _mark_session_expired(account, db, message="Session abgelaufen")
+                return {"success": False, "valid": False}
+
+            result = await create_page.create_listing(
+                title=title,
+                description=description,
+                price=price,
+                location=location,
+            )
+
+            now = datetime.now(timezone.utc)
+
+            # If we got a new listing ID back, save a stub record
+            new_ka_id = result.get("new_listing_id")
+            if new_ka_id:
+                new_listing = Listing(
+                    account_id=account.id,
+                    kleinanzeigen_id=new_ka_id,
+                    title=title,
+                    price=price,
+                    description=description,
+                    location=location,
+                    is_active=True,
+                    last_scraped_at=now,
+                )
+                db.add(new_listing)
+
+            account.status = AccountStatus.ACTIVE.value
+            account.last_error = None
+            account.last_scraped_at = now
+            await db.commit()
+
+            return {
+                **result,
+                "valid": True,
+            }
+        finally:
+            await session_manager.close_account(account.id, headless=True)
+
+
 async def _handle_update_listing(job: Job, db: AsyncSession, session_manager: SessionManager) -> dict[str, Any]:
     listing_id = _require_listing_id(job)
     account = await _get_account(db, job.account_id)
@@ -636,7 +700,7 @@ HANDLERS = {
     JobType.SCRAPE_MESSAGES.value: _handle_scrape_messages,
     JobType.SCRAPE_CONVERSATION.value: _handle_scrape_conversation,
     JobType.SEND_MESSAGE.value: _handle_send_message,
-    JobType.CREATE_LISTING.value: _not_implemented,
+    JobType.CREATE_LISTING.value: _handle_create_listing,
     JobType.UPDATE_LISTING.value: _handle_update_listing,
     JobType.DELETE_LISTING.value: _handle_delete_listing,
     JobType.BUMP_LISTING.value: _handle_bump_listing,
