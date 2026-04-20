@@ -41,6 +41,8 @@ export default function DashboardPage() {
   const [loaded, setLoaded] = useState(false);
   const [loadingAccounts, setLoadingAccounts] = useState(false);
   const [pageError, setPageError] = useState("");
+  const [totalViews, setTotalViews] = useState(null);
+  const [totalUnread, setTotalUnread] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [label, setLabel] = useState("");
   const [saving, setSaving] = useState(false);
@@ -51,8 +53,16 @@ export default function DashboardPage() {
     setLoadingAccounts(true);
     setPageError("");
     try {
-      const response = await api.get("/ka-accounts");
-      setAccounts(response.data);
+      const [accountsRes, listingsRes, convsRes] = await Promise.all([
+        api.get("/ka-accounts"),
+        api.get("/listings/all").catch(() => ({ data: [] })),
+        api.get("/messages/conversations").catch(() => ({ data: [] })),
+      ]);
+      setAccounts(accountsRes.data);
+      const allListings = listingsRes.data || [];
+      setTotalViews(allListings.reduce((sum, l) => sum + Number(l.view_count || 0), 0));
+      const allConvs = convsRes.data || [];
+      setTotalUnread(allConvs.reduce((sum, c) => sum + Number(c.unread_count || 0), 0));
       await refreshUser();
     } catch (error) {
       setPageError(getErrorMessage(error));
@@ -124,16 +134,26 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             <div className="rounded-lg bg-slate-50 p-4">
               <div className="text-sm text-slate-500">Verbundene Konten</div>
-              <div className="mt-2 text-3xl font-semibold text-slate-900">{loadingAccounts ? "…" : accounts.length}</div>
+              <div className="mt-2 text-3xl font-semibold text-slate-900">{loadingAccounts ? "..." : accounts.length}</div>
               <div className="mt-2 text-sm text-slate-600">Aktiv: {activeAccounts}</div>
             </div>
             <div className="rounded-lg bg-slate-50 p-4">
               <div className="text-sm text-slate-500">Listings gesamt</div>
-              <div className="mt-2 text-3xl font-semibold text-slate-900">{loadingAccounts ? "…" : totalListings}</div>
-              <div className="mt-2 text-sm text-slate-600">Über alle Accounts</div>
+              <div className="mt-2 text-3xl font-semibold text-slate-900">{loadingAccounts ? "..." : totalListings}</div>
+              <div className="mt-2 text-sm text-slate-600">Aktiv in allen Konten</div>
+            </div>
+            <div className="rounded-lg bg-slate-50 p-4">
+              <div className="text-sm text-slate-500">Views gesamt</div>
+              <div className="mt-2 text-3xl font-semibold text-slate-900">{loadingAccounts || totalViews === null ? "..." : new Intl.NumberFormat("de-DE").format(totalViews)}</div>
+              <div className="mt-2 text-sm text-slate-600">Alle aktiven Inserate</div>
+            </div>
+            <div className="rounded-lg bg-slate-50 p-4">
+              <div className="text-sm text-slate-500">Ungelesene Nachrichten</div>
+              <div className="mt-2 text-3xl font-semibold text-slate-900">{loadingAccounts || totalUnread === null ? "..." : totalUnread}</div>
+              <div className="mt-2 text-sm text-slate-600">Alle Konten</div>
             </div>
             <div className="rounded-lg bg-slate-50 p-4">
               <div className="text-sm text-slate-500">Aktiver Plan</div>
