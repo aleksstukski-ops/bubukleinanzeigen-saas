@@ -90,8 +90,17 @@ services:
       - backend
       - frontend
 
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    restart: always
+    ports:
+      - "3001:3001"    # protected behind firewall / VPN — do NOT expose publicly without auth
+    volumes:
+      - uptime_kuma_data:/app/data
+
 volumes:
   postgres_data:
   redis_data:
   scraper_sessions:
   nginx_logs:
+  uptime_kuma_data:
