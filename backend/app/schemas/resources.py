@@ -39,8 +39,15 @@ class ListingOut(BaseModel):
     bookmark_count: int | None = 0
     expires_at: datetime | None
     is_active: bool
+    bump_interval_days: int | None = None
+    next_bump_at: datetime | None = None
     last_scraped_at: datetime
     created_at: datetime
+
+
+class BumpScheduleIn(BaseModel):
+    account_id: int
+    bump_interval_days: int | None = Field(default=None, ge=1, le=30)
 
 
 class ListingUpdateIn(BaseModel):

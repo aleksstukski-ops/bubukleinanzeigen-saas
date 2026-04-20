@@ -1,3 +1,5 @@
+import { useState } from "react";
+import api from "../lib/api";
 import Modal from "./Modal";
 
 function formatDate(value) {
@@ -26,6 +28,77 @@ function getStatusClass(listing, isProcessing) {
   return "border border-slate-200 bg-slate-100 text-slate-700";
 }
 
+const BUMP_INTERVALS = [
+  { value: "", label: "Aus" },
+  { value: "1", label: "Jeden Tag" },
+  { value: "2", label: "Alle 2 Tage" },
+  { value: "3", label: "Alle 3 Tage" },
+  { value: "5", label: "Alle 5 Tage" },
+  { value: "7", label: "Wochentlich" },
+  { value: "14", label: "Alle 2 Wochen" },
+];
+
+function AutoBumpSection({ listing, onUpdated }) {
+  const current = listing.bump_interval_days ? String(listing.bump_interval_days) : "";
+  const [selected, setSelected] = useState(current);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+
+  const isDirty = selected !== current;
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError("");
+    setSuccess(false);
+    try {
+      const intervalDays = selected ? Number(selected) : null;
+      const res = await api.patch(`/listings/${listing.kleinanzeigen_id}/bump-schedule`, {
+        account_id: listing.account_id,
+        bump_interval_days: intervalDays,
+      });
+      setSuccess(true);
+      if (onUpdated) onUpdated(res.data);
+    } catch (err) {
+      setError(err?.response?.data?.detail || err?.message || "Fehler beim Speichern.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="rounded-lg border border-slate-200 p-3">
+      <div className="text-xs font-semibold text-slate-500 mb-2">{"⚡"} Auto-Bump</div>
+      <div className="flex items-center gap-2">
+        <select
+          value={selected}
+          onChange={(e) => { setSelected(e.target.value); setSuccess(false); }}
+          className="input flex-1 text-sm py-1.5"
+        >
+          {BUMP_INTERVALS.map((opt) => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+        <button
+          type="button"
+          className="btn-primary py-1.5 px-3 text-sm"
+          onClick={handleSave}
+          disabled={saving || !isDirty}
+        >
+          {saving ? "..." : "Speichern"}
+        </button>
+      </div>
+      {listing.next_bump_at && !isDirty && (
+        <div className="mt-2 text-xs text-slate-500">
+          Nächster Bump: {formatDate(listing.next_bump_at)}
+        </div>
+      )}
+      {success && <div className="mt-2 text-xs text-emerald-600">{"✓"} Gespeichert</div>}
+      {error && <div className="mt-2 text-xs text-red-600">{error}</div>}
+    </div>
+  );
+}
+
 export default function ListingDetailModal({
   open,
   listing,
@@ -36,6 +109,7 @@ export default function ListingDetailModal({
   onEdit,
   onBump,
   onDelete,
+  onListingUpdated,
 }) {
   if (!listing) return null;
 
@@ -46,7 +120,7 @@ export default function ListingDetailModal({
         {bumping ? "Wird gestartet..." : "Hochschieben"}
       </button>
       <button type="button" onClick={onDelete} disabled={deleting} className="btn-danger">
-        {deleting ? "Löscht..." : "Löschen"}
+        {deleting ? "Loscht..." : "Loschen"}
       </button>
     </div>
   );
@@ -80,6 +154,10 @@ export default function ListingDetailModal({
             <div className="mt-1 font-semibold">{formatViews(listing.view_count)}</div>
           </div>
           <div className="rounded-lg border border-slate-200 p-3">
+            <div className="text-xs text-slate-500">{"❤️"} Gemerkt</div>
+            <div className="mt-1 font-semibold">{listing.bookmark_count ?? 0}</div>
+          </div>
+          <div className="rounded-lg border border-slate-200 p-3">
             <div className="text-xs text-slate-500">Konto</div>
             <div className="mt-1 font-semibold">{listing.accountLabel || "-"}</div>
           </div>
@@ -88,10 +166,12 @@ export default function ListingDetailModal({
             <div className="mt-1 text-sm">{formatDate(listing.last_scraped_at)}</div>
           </div>
           <div className="rounded-lg border border-slate-200 p-3">
-            <div className="text-xs text-slate-500">Läuft ab</div>
+            <div className="text-xs text-slate-500">Lauft ab</div>
             <div className="mt-1 text-sm">{formatDate(listing.expires_at)}</div>
           </div>
         </div>
+
+        <AutoBumpSection listing={listing} onUpdated={onListingUpdated} />
 
         <div className="rounded-lg border border-slate-200 p-3">
           <div className="text-xs text-slate-500">Beschreibung</div>

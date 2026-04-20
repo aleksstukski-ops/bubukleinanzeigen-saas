@@ -8,6 +8,7 @@ from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models import JobType, KleinanzeigenAccount, Listing, User
 from app.schemas.resources import (
+    BumpScheduleIn,
     JobOut,
     ListingActionIn,
     ListingListResponse,
@@ -153,6 +154,32 @@ async def update_listing(
         priority=3,
     )
     return job
+
+
+@router.patch("/{listing_id}/bump-schedule", response_model=ListingOut)
+async def set_bump_schedule(
+    listing_id: str,
+    payload: BumpScheduleIn,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Set or clear the auto-bump schedule for a listing."""
+    from datetime import timedelta
+    account = await _get_account_for_user(db, account_id=payload.account_id, user_id=user.id)
+    listing = await _get_listing_for_user(db, kleinanzeigen_id=listing_id, user_id=user.id)
+
+    if listing.account_id != account.id:
+        raise HTTPException(status_code=400, detail="Listing does not belong to account")
+
+    listing.bump_interval_days = payload.bump_interval_days
+    if payload.bump_interval_days is not None:
+        listing.next_bump_at = datetime.now(timezone.utc) + timedelta(days=payload.bump_interval_days)
+    else:
+        listing.next_bump_at = None
+
+    await db.commit()
+    await db.refresh(listing)
+    return listing
 
 
 @router.delete("/{listing_id}", response_model=JobOut)

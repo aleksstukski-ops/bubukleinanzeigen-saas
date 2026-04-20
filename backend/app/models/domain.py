@@ -26,6 +26,8 @@ class Listing(Base):
     bookmark_count: Mapped[int | None] = mapped_column(Integer, default=0)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    bump_interval_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    next_bump_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_scraped_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

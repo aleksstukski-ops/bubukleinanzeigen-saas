@@ -319,6 +319,10 @@ export default function ListingsPage() {
         onEdit={() => { setEditError(""); setEditOpen(true); }}
         onBump={handleBump}
         onDelete={handleDelete}
+        onListingUpdated={(updated) => {
+          setListings((prev) => prev.map((l) => l.kleinanzeigen_id === updated.kleinanzeigen_id ? { ...l, ...updated, accountLabel: l.accountLabel } : l));
+          setSelectedListing((prev) => prev ? { ...prev, ...updated, accountLabel: prev.accountLabel } : prev);
+        }}
       />
 
       <ListingEditModal
