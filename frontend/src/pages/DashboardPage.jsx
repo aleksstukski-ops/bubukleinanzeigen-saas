@@ -4,6 +4,7 @@ import api from "../lib/api";
 import { useAuth } from "../hooks/useAuth";
 import Modal from "../components/Modal";
 import { usePushNotifications } from "../hooks/usePushNotifications";
+import OnboardingWizard, { needsOnboarding } from "../components/OnboardingWizard";
 
 function getErrorMessage(error) {
   return error?.response?.data?.detail || error?.message || "Aktion fehlgeschlagen.";
@@ -44,6 +45,7 @@ export default function DashboardPage() {
   const [label, setLabel] = useState("");
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const loadAccounts = async () => {
     setLoadingAccounts(true);
@@ -61,6 +63,7 @@ export default function DashboardPage() {
 
   if (!loaded) {
     setLoaded(true);
+    if (needsOnboarding()) setShowOnboarding(true);
     loadAccounts();
   }
 
@@ -204,6 +207,10 @@ export default function DashboardPage() {
           ) : null}
         </section>
       </div>
+
+      {showOnboarding && (
+        <OnboardingWizard onDone={() => { setShowOnboarding(false); loadAccounts(); }} />
+      )}
 
       <Modal
         open={modalOpen}

@@ -21,7 +21,10 @@ export default function RegisterPage() {
     event.preventDefault();
     if (password !== passwordConfirm) { setError("Die Passw\u00f6rter stimmen nicht \u00fcberein."); return; }
     setError(""); setSubmitting(true);
-    try { await register(email, password, name); }
+    try {
+      await register(email, password, name);
+      localStorage.setItem("bubu_onboarding", "pending");
+    }
     catch (submitError) { setError(getErrorMessage(submitError)); }
     finally { setSubmitting(false); }
   };
