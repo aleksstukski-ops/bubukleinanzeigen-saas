@@ -9,6 +9,7 @@ from app.db.session import get_db
 from app.models import JobType, KleinanzeigenAccount, Listing, User
 from app.models.domain import ListingStat
 from app.schemas.resources import (
+    BulkActionIn,
     BumpScheduleIn,
     JobOut,
     ListingActionIn,
@@ -105,6 +106,43 @@ async def list_listings(
         await enqueue_job(db, JobType.SCRAPE_LISTINGS, account_id=account.id, priority=5)
 
     return ListingListResponse(items=listings, stale=is_stale, last_updated=last_updated)
+
+
+@router.post("/bulk-action", response_model=list[JobOut])
+async def bulk_action(
+    payload: BulkActionIn,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Enqueue bump or delete jobs for a list of listing IDs."""
+    if payload.action not in ("bump", "delete"):
+        raise HTTPException(status_code=400, detail="action must be 'bump' or 'delete'")
+
+    # Fetch all matching listings that belong to this user
+    result = await db.execute(
+        select(Listing)
+        .join(KleinanzeigenAccount, KleinanzeigenAccount.id == Listing.account_id)
+        .where(
+            Listing.kleinanzeigen_id.in_(payload.listing_ids),
+            KleinanzeigenAccount.user_id == user.id,
+            Listing.is_active.is_(True),
+        )
+    )
+    listings = result.scalars().all()
+
+    job_type = JobType.BUMP_LISTING if payload.action == "bump" else JobType.DELETE_LISTING
+    jobs = []
+    for listing in listings:
+        job = await enqueue_job(
+            db,
+            job_type,
+            account_id=listing.account_id,
+            payload={"listing_id": listing.kleinanzeigen_id},
+            priority=3,
+        )
+        jobs.append(job)
+
+    return jobs
 
 
 @router.get("/{listing_id}/stats", response_model=list[ListingStatOut])

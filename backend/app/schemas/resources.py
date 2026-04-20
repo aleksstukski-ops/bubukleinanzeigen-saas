@@ -60,6 +60,11 @@ class ListingStatOut(BaseModel):
     bookmark_count: int | None
 
 
+class BulkActionIn(BaseModel):
+    listing_ids: list[str] = Field(min_length=1, max_length=100)
+    action: str  # "bump" or "delete"
+
+
 class ListingUpdateIn(BaseModel):
     account_id: int
     title: str = Field(min_length=1, max_length=500)

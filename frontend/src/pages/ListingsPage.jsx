@@ -60,6 +60,8 @@ export default function ListingsPage() {
   const [editError, setEditError] = useState("");
   const [activeActionId, setActiveActionId] = useState("");
   const [processingById, setProcessingById] = useState({});
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   const loadListings = async () => {
     setLoading(true);
@@ -192,6 +194,43 @@ export default function ListingsPage() {
 
   const selectedProcessingState = selectedListing ? processingById[selectedListing.kleinanzeigen_id] : "";
 
+  const toggleSelectId = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredListings.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredListings.map((l) => l.kleinanzeigen_id)));
+    }
+  };
+
+  const handleBulkAction = async (action) => {
+    if (selectedIds.size === 0) return;
+    setBulkLoading(true);
+    setPageError("");
+    setPageNotice("");
+    try {
+      const res = await api.post("/listings/bulk-action", {
+        listing_ids: [...selectedIds],
+        action,
+      });
+      setPageNotice(`${res.data.length} Job(s) gestartet.`);
+      setSelectedIds(new Set());
+      await loadListings();
+    } catch (error) {
+      setPageError(getErrorMessage(error));
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
   return (
     <>
       <div className="space-y-4">
@@ -250,6 +289,36 @@ export default function ListingsPage() {
           {pageError ? <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{pageError}</div> : null}
           {pageNotice ? <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-700">{pageNotice}</div> : null}
 
+          {/* Bulk action bar */}
+          {selectedIds.size > 0 && (
+            <div className="mt-4 flex flex-wrap items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
+              <span className="text-sm font-medium text-blue-700">{selectedIds.size} ausgewahlt</span>
+              <button
+                type="button"
+                className="btn-primary py-1 px-3 text-sm"
+                disabled={bulkLoading}
+                onClick={() => handleBulkAction("bump")}
+              >
+                {bulkLoading ? "..." : "Alle hochschieben"}
+              </button>
+              <button
+                type="button"
+                className="btn-danger py-1 px-3 text-sm"
+                disabled={bulkLoading}
+                onClick={() => handleBulkAction("delete")}
+              >
+                {bulkLoading ? "..." : "Alle loschen"}
+              </button>
+              <button
+                type="button"
+                className="ml-auto text-sm text-blue-600 hover:text-blue-800"
+                onClick={() => setSelectedIds(new Set())}
+              >
+                Abwahlen
+              </button>
+            </div>
+          )}
+
           {loading ? (
             <div className="mt-4 grid gap-3">
               <div className="h-28 animate-pulse rounded-lg bg-slate-100" />
@@ -265,16 +334,38 @@ export default function ListingsPage() {
           ) : null}
 
           {!loading && filteredListings.length > 0 ? (
-            <div className="mt-4 grid gap-3">
+            <div className="mt-4">
+              {/* Select all row */}
+              <div className="mb-2 flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.size === filteredListings.length && filteredListings.length > 0}
+                  onChange={toggleSelectAll}
+                  className="h-4 w-4 rounded border-slate-300"
+                />
+                <span className="text-xs text-slate-500">Alle ausw{"\u00e4"}hlen</span>
+              </div>
+              <div className="grid gap-3">
               {filteredListings.map((listing) => {
                 const processingState = processingById[listing.kleinanzeigen_id];
+                const isSelected = selectedIds.has(listing.kleinanzeigen_id);
                 return (
-                  <button
-                    type="button"
+                  <div
                     key={listing.kleinanzeigen_id}
-                    onClick={() => openListing(listing)}
-                    className="w-full rounded-lg border border-slate-200 bg-white p-4 text-left transition hover:border-blue-300 hover:shadow-sm"
+                    className={`flex items-start gap-3 rounded-lg border p-4 transition ${isSelected ? "border-blue-300 bg-blue-50" : "border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm"}`}
                   >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={(e) => { e.stopPropagation(); toggleSelectId(listing.kleinanzeigen_id); }}
+                      className="mt-1 h-4 w-4 shrink-0 rounded border-slate-300"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <button
+                      type="button"
+                      className="min-w-0 flex-1 text-left"
+                      onClick={() => openListing(listing)}
+                    >
                     <div className="flex gap-4">
                       <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-slate-100">
                         {listing.image_url ? (
@@ -301,9 +392,11 @@ export default function ListingsPage() {
                         </div>
                       </div>
                     </div>
-                  </button>
+                    </button>
+                  </div>
                 );
               })}
+              </div>
             </div>
           ) : null}
         </section>
