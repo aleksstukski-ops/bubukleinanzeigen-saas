@@ -1,0 +1,97 @@
+version: "3.9"
+
+# Production compose — usage:
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Requires .env.prod (copy from .env, set real secrets, no ports exposed except nginx).
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: always
+    env_file: .env.prod
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-bubu}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-bubukleinanzeigen}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bubu}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    # No port exposure — access via internal network only
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: always
+    env_file: .env.prod
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - scraper_sessions:/app/storage/sessions
+    # No hot-reload, no source mount in production
+    expose:
+      - "8000"
+
+  scraper:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.scraper
+    restart: always
+    env_file: .env.prod
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - scraper_sessions:/app/storage/sessions
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    restart: always
+    expose:
+      - "80"
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/www/certbot:/var/www/certbot:ro
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - backend
+      - frontend
+
+volumes:
+  postgres_data:
+  redis_data:
+  scraper_sessions:
+  nginx_logs:
