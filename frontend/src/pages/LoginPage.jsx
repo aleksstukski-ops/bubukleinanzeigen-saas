@@ -77,6 +77,11 @@ export default function LoginPage() {
           <div className="mt-3 text-sm text-slate-500">
             <Link className="font-medium text-blue-600 hover:text-blue-700" to="/forgot-password">Passwort vergessen?</Link>
           </div>
+          <div className="mt-6 flex flex-wrap justify-center gap-3 text-xs text-slate-400">
+            <Link to="/impressum" className="hover:text-slate-600">Impressum</Link>
+            <Link to="/datenschutz" className="hover:text-slate-600">Datenschutz</Link>
+            <Link to="/agb" className="hover:text-slate-600">AGB</Link>
+          </div>
         </div>
       </div>
     </div>
