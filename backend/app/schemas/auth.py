@@ -38,7 +38,7 @@ class UserOut(BaseModel):
 
 
 class PasswordResetRequestIn(BaseModel):
-    email: str
+    email: EmailStr
 
 
 class PasswordResetIn(BaseModel):

@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.db.session import get_db
-from app.models import AccountStatus, JobType, KleinanzeigenAccount, User
+from app.models import AccountStatus, JobType, KleinanzeigenAccount, Listing, User
 from app.schemas.resources import JobOut, KleinanzeigenAccountCreate, KleinanzeigenAccountOut
 from app.services.jobs import enqueue_job
 
@@ -13,10 +13,39 @@ router = APIRouter(prefix="/ka-accounts", tags=["kleinanzeigen-accounts"])
 
 @router.get("", response_model=list[KleinanzeigenAccountOut])
 async def list_accounts(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
-        select(KleinanzeigenAccount).where(KleinanzeigenAccount.user_id == user.id).order_by(KleinanzeigenAccount.created_at)
+    accounts_result = await db.execute(
+        select(KleinanzeigenAccount)
+        .where(KleinanzeigenAccount.user_id == user.id)
+        .order_by(KleinanzeigenAccount.created_at)
     )
-    return result.scalars().all()
+    accounts = accounts_result.scalars().all()
+
+    # Batch listing counts in one query
+    account_ids = [a.id for a in accounts]
+    counts: dict[int, int] = {}
+    if account_ids:
+        counts_result = await db.execute(
+            select(Listing.account_id, func.count(Listing.id))
+            .where(Listing.account_id.in_(account_ids), Listing.is_active.is_(True))
+            .group_by(Listing.account_id)
+        )
+        counts = {row[0]: row[1] for row in counts_result.all()}
+
+    out = []
+    for account in accounts:
+        data = {
+            "id": account.id,
+            "label": account.label,
+            "kleinanzeigen_user_name": account.kleinanzeigen_user_name,
+            "status": account.status,
+            "is_enabled": account.is_enabled,
+            "last_scraped_at": account.last_scraped_at,
+            "last_error": account.last_error,
+            "created_at": account.created_at,
+            "listing_count": counts.get(account.id, 0),
+        }
+        out.append(KleinanzeigenAccountOut(**data))
+    return out
 
 
 @router.post("", response_model=KleinanzeigenAccountOut, status_code=status.HTTP_201_CREATED)

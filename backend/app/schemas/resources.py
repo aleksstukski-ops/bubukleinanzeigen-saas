@@ -18,6 +18,7 @@ class KleinanzeigenAccountOut(BaseModel):
     last_scraped_at: datetime | None
     last_error: str | None
     created_at: datetime
+    listing_count: int = 0
 
 
 class ListingOut(BaseModel):
