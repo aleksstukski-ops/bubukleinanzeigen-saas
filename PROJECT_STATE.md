@@ -1,154 +1,110 @@
 # Project State
 
-Zuletzt aktualisiert: 2026-04-19 (Session 5 Stabilisierung)
+Zuletzt aktualisiert: 2026-04-20 (Quality Phase abgeschlossen)
 
 ## Aktueller Stand
 
-Phase: Phase 2 Stripe Integration DONE (Tasks 6+7)
-Naechster Schritt: Stripe-Konto + Produkte anlegen (Task 5, macht Chef), dann .env befuellen
+Phase: **Roadmap COMPLETE + Quality Phase DONE**
+Naechster Schritt: Echte Stripe-Keys eintragen (falls noch nicht), live testen, Launch.
 
 ## Was funktioniert
 
 ### Infrastruktur
 - Alle 5 Docker-Services laufen (postgres, redis, backend, scraper, frontend)
 - bubuanzeigen.de LIVE via Cloudflare Tunnel -> Mac Mini M4
-- GitHub Repo public, alle Agents haben Zugriff
+- GitHub Repo, alle Commits gepusht
 - SMTP (Gmail App-Passwort) funktioniert
 
 ### Auth
 - Register, Login, Refresh, Logout -- komplett
-- Passwort vergessen + Reset via E-Mail -- komplett und getestet
+- Passwort vergessen + Reset via E-Mail -- komplett
 - JWT Access + Refresh Tokens
+- Rate-Limiting auf Auth-Endpoints (slowapi): login 20/min, register 10/min, forgot-pw 5/min
 
 ### Kleinanzeigen-Accounts
 - CRUD mit Plan-Limit-Check
-- cli_login.py funktioniert (sichtbarer Browser auf Host)
-- FERNET_KEY Persistenz (Commit f511aa2)
-- Session-Encryption/Decryption end-to-end verifiziert
-- Account 4 active, 14 Listings, scrape_listings erfolgreich
+- listing_count jetzt korrekt per Batch-Query (war vorher immer 0)
+- Session-Encryption/Decryption end-to-end
 
 ### Scraper
 - Alle Handler implementiert und funktional
-- bookmark_count Scraping funktioniert (Commit f66fb6d)
-- Selectors mit Fallback-Cascades
-- Alle Page Objects implementiert
+- bookmark_count + view_count Scraping funktioniert
+- Canary-Alerts (0 Ergebnisse) -> Email + Telegram Alert
+- Parallele Selektor-Suche (max. 1x timeout statt N*timeout)
+
+### Backend API
+- Globaler Exception Handler (kein roher Stack-Trace an User)
+- Rate-Limiting via slowapi
+- N+1 Fixes: listing_count per Batch, messages stale-check per IN, /listings/all Endpoint
+- Input-Validierung: EmailStr auf allen Email-Feldern
 
 ### Frontend
-- Dashboard, Konten, Inserate, Nachrichten -- alle Seiten da
-- Inserate zeigen Views + Bookmark-Count (Herz-Icon)
-- LoginPage sauber (ein Passwort-vergessen-Link)
+- Dashboard, Konten, Inserate, Nachrichten, Abrechnung, Einstellungen, Admin
+- Theme-System: Hell/Dunkel + 5 Akzentfarben, persistiert in localStorage
+- Dark Mode: .dark CSS-Overrides fuer alle hardcodierten Tailwind-Klassen
+- PWA: manifest.json, Icons (192/512px), apple-touch-icon, offline.html, SW registriert
+- Mobile Nav: 5 Items max (kein Overflow auf 375px)
+- Cookie-Banner + Legal Pages (Impressum, Datenschutz, AGB)
+- Admin Dashboard (nur fuer is_admin=True)
+- Push Notifications (Web Push via VAPID)
 
-## Was NICHT funktioniert / offen
+### Phase 4 Infrastructure
+- docker-compose.prod.yml (Nginx, kein Hot-Reload, kein Source-Mount)
+- nginx/nginx.conf + conf.d/app.conf (HTTPS, HSTS, SPA-Fallback, Stripe-Webhook)
+- scripts/backup-postgres.sh + restore-postgres.sh
+- Uptime Kuma in Prod-Compose
 
-- Stripe-Konto + Produkte noch nicht angelegt (Task 5, macht Chef manuell)
-- .env muss mit echten Stripe-Keys befuellt werden (STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PRICE_*)
-- Stripe-Webhook-URL bei Stripe registrieren: https://bubuanzeigen.de/api/billing/webhook
-- Admin Dashboard komplett offen
-- Push Notifications komplett offen
-- Production Deployment (laeuft auf Mac Mini, nicht auf Server)
+## Was noch manuell noetig ist (Chef-Tasks)
 
-## Known Issues
+- Stripe: Konto anlegen, Produkte erstellen, Keys in .env eintragen, Webhook registrieren
+- Telegram: Bot-Token + Chat-ID in .env fuer Scraper-Alerts
+- Legal Pages: Platzhalter durch echte Angaben ersetzen (Anwalt pruefen lassen)
+- Impressum: Echte Adresse eintragen
+- Icons: Professionelles Logo statt blauem "B" erstellen (optional)
+- Alembic Migration: docker compose exec backend alembic upgrade head (nach DB-Reset)
 
-- Erste DB-Migration muss manuell: docker compose exec backend alembic upgrade head
-- Docker Service heisst "scraper", NICHT "worker"
-- cli_login.py braucht lokale DATABASE_URL mit 127.0.0.1, nicht "postgres"
-- cli_login.py braucht Python 3.11 venv, nicht System-Python 3.9
-- Smart Quotes von GPT muessen vor Einspielen geprueft werden
-- Selektoren fuer Bump/Delete/Edit gegen Live-DOM pruefen (DOM-Haertung noetig)
+## Known Issues / Fixes die durchgefuehrt wurden
+
+- listing_count war immer 0 -- jetzt per Batch-Query korrekt berechnet
+- N+1 in messages.py -- jetzt mit IN-Clause gebatcht
+- ListingsPage: N API-Calls pro Account -> jetzt /listings/all (1 Call)
+- PasswordResetRequestIn: war `str` statt `EmailStr` -- gefixt
+- PWA-Icons: *.png war in .gitignore, Exception fuer frontend/public/*.png hinzugefuegt
 
 ## Session-Log
 
-### 2026-04-19: Phase 2 Stripe Integration (Tasks 6+7)
+### 2026-04-20: Quality Phase
 
 Fertiggestellt:
-- stripe 11.4.1 in requirements.txt
-- config.py: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PRICE_*, FRONTEND_URL
-- schemas/auth.py: UserOut hat jetzt subscription_status
-- billing.py Router: POST /api/billing/checkout-session, /portal, /webhook
-  - checkout-session erstellt Stripe-Customer bei Erstbesuch, leitet zu Stripe Checkout weiter
-  - portal oeffnet Stripe Customer Portal (Kuendigung, Zahlungsdaten)
-  - webhook verarbeitet checkout.session.completed, subscription.updated/deleted
-  - Bei Kuendigung/Ablauf -> User wird auf Free zurueckgesetzt
-- BillingPage.jsx: Plan-Karten (Free/Starter/Pro/Business), Upgrade-Buttons, Success/Cancel-Banner
-- Nav: 'Abrechnung' 💳 als 5. Eintrag
-- .env.example: Stripe-Variablen dokumentiert
+1. Mobile Responsive: Nav auf 5 Items begrenzt (375px-sicher)
+2. API-Fehlerbehandlung: Globaler Exception Handler in main.py
+3. Dark Mode: .dark CSS-Overrides fuer bg-white/bg-slate-*/text-slate-*/border-slate-*
+4. PWA: manifest.json, Icons, offline.html, SW mit install/activate/fetch
+5. N+1-Fixes: /listings/all, messages batch, listing_count batch
+6. Rate-Limiting: slowapi auf Auth-Endpoints
+7. Input-Validierung: EmailStr fix
 
-Was noch fehlt (manuell durch Chef):
-- Stripe-Konto + Produkte anlegen
-- .env befuellen + Container neu starten
-- Webhook-URL bei Stripe registrieren: https://bubuanzeigen.de/api/billing/webhook
+### 2026-04-20: Roadmap abgearbeitet (Tasks 9-15)
 
-### 2026-04-19: Phase 1 Stabilisierung abgeschlossen (Tasks 1-3)
+- Task 9: Admin Dashboard (stats, users, jobs, accounts -- 4 Tabs)
+- Task 10: Email + Telegram Alerts bei Scraper-Fehlern
+- Task 11: Theme-System (CSS-Vars, Dark Mode, 5 Akzentfarben, SettingsPage)
+- Task 12: docker-compose.prod.yml + Nginx-Reverse-Proxy
+- Task 13: Postgres Backup + Restore Scripts
+- Task 14: Uptime Kuma in Prod-Compose
+- Task 15: Legal Pages + Cookie-Banner
 
-Fertiggestellt:
-- Task 1: Alembic Migration 0002_add_bookmark_count (ADD COLUMN IF NOT EXISTS, idempotent)
-- Task 2: Session-Auto-Refresh
-  - api.js: setSessionExpiredHandler() Hook wenn Refresh-Token ungueltig
-  - useAuth.jsx: sessionExpired-State + dismissSessionExpired()
-  - Layout.jsx: Amber-Banner mit "Neu einloggen"-Button statt stillem Logout
-- Task 3: DOM-Haertung
-  - base.py: wait_for_selector_list() rast jetzt alle Selektoren parallel statt sequentiell
-    (vorher worst case 3x10s=30s, jetzt immer max. 10s)
-  - dispatcher.py: Canary-Check nach scrape_listings + scrape_messages
-    (0 Ergebnisse = WARNING + automatischer Debug-Snapshot)
+### 2026-04-19: Phase 1+2+3 (Tasks 1-8)
 
-### 2026-04-19: Stabilisierung
+- Phase 1: Alembic Migration, Session-Banner, DOM-Haertung
+- Phase 2: Stripe Integration (Checkout, Webhook, BillingPage)
+- Phase 3: Push Notifications (VAPID, pywebpush, ServiceWorker)
+- Phase 3: Admin Dashboard Backend
 
-Fertiggestellt:
-- FERNET_KEY Persistenz-Fix (config.py + crypto.py)
-  - crypto.py nutzt jetzt settings.FERNET_KEY direkt statt SHA256-Ableitung
-  - Defensive isinstance-Check fuer str/bytes
-  - .env.example bereinigt (keine echten E-Mail-Adressen)
-  - Commit: f511aa2
-- bookmark_count end-to-end
-  - Model + Schema hatten bookmark_count schon
-  - Scraper gefixt: nutzt AD_VIEWS Selektor + Regex "(\d+)\s*mal gemerkt"
-  - Frontend zeigt Herz-Icon + Zahl
-  - DB-Spalte per SQL manuell hinzugefuegt (Migration fehlt noch)
-  - Verifiziert: 5 Listings mit bookmark_count > 0 nach Scrape
-  - Commit: f66fb6d
-- Session-Invalidierung + Re-Login fuer Account 4 erfolgreich
-- LoginPage Duplicate-Links geprueft -- war schon sauber
-- cli_login.py geprueft -- braucht keinen Fix (nutzt crypto.py upstream)
-- MASTERPLAN.md erstellt (Gesamtplan fuer alle Agents)
-
-Probleme die auftraten:
-- Python-Inline-Script hat listings_page.py mit write(None) zerstoert -> git checkout Recovery
-- sed-Escaping in zsh fehlgeschlagen -> komplette Datei per cat geschrieben
-- docker compose up worker -> Service heisst scraper, nicht worker
-
-### 2026-04-16: Session 3+4 -- Listings + Messages
-
-Fertiggestellt:
-- ListingsPage mit Filter, Suche, Sortierung
-- ListingDetailModal + ListingEditModal
-- MessagesPage (Inbox, Chat-View, Reply, 30s Polling)
-- Alle Dispatcher-Handler
-- Scraper-Fixes (Bilder, Preise, Views, Titel, Reihenfolge)
-
-### 2026-04-16: Session 2 -- Scraper-Foundation
-
-Fertiggestellt:
-- selectors.py, BasePage, LoginPage, ListingsPage
-- SessionManager, Dispatcher
-- Frontend: AccountsPage mit Status-Badges
-
-### 2026-04-16: Session 1 -- Foundation
-
-Fertiggestellt:
-- Docker Compose, Auth-Flow, DB-Schema, API-Skeleton, Frontend-Skeleton
-
-## Notizen fuer naechsten Agenten
+## Notizen
 
 - Docker Service-Namen: backend, frontend, postgres, redis, scraper
-- Dateien IMMER lesen vor Aenderung -- nie blind editieren
-- Komplexe Dateiaenderungen: komplette Datei per cat schreiben
-- Kein sed fuer mehrzeilige Aenderungen -- zu fragil in zsh
-- Kimi nur Terminal-Befehle senden, kein Erklaerungstext
-- GPT-Output auf Smart Quotes pruefen
-- bookmark_count Selektor: gleiche DOM-Section wie view_count, Regex-basiert
+- Dateien IMMER lesen vor Aenderung
+- Kein sed fuer mehrzeilige Aenderungen
 - cli_login.py laeuft NUR auf dem Host (nicht in Docker), braucht GUI/DISPLAY
-
----
-
-Naechste Tasks: Siehe MASTERPLAN.md Abschnitt 7 (Roadmap)
+- bookmark_count Selektor: gleiche DOM-Section wie view_count, Regex-basiert
