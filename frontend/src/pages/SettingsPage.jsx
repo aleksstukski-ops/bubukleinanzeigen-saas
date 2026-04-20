@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { useAuth } from "../hooks/useAuth";
+import api from "../lib/api";
 
 const THEME_LABELS = {
   light: "Hell",
@@ -14,9 +16,84 @@ const ACCENT_META = {
   orange: { label: "Orange", color: "#ea580c" },
 };
 
+function NotificationSettings({ user, onSaved }) {
+  const [pushEnabled, setPushEnabled] = useState(user?.notify_push_new_message ?? true);
+  const [emailEnabled, setEmailEnabled] = useState(user?.notify_email_new_message ?? false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+
+  const isDirty =
+    pushEnabled !== (user?.notify_push_new_message ?? true) ||
+    emailEnabled !== (user?.notify_email_new_message ?? false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError("");
+    setSuccess(false);
+    try {
+      const res = await api.patch("/auth/notification-settings", {
+        notify_push_new_message: pushEnabled,
+        notify_email_new_message: emailEnabled,
+      });
+      setSuccess(true);
+      if (onSaved) onSaved(res.data);
+    } catch (err) {
+      setError(err?.response?.data?.detail || err?.message || "Fehler beim Speichern.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <section className="card space-y-4">
+      <h2 className="text-base font-semibold" style={{ color: "var(--text)" }}>{"🔔"} Benachrichtigungen</h2>
+      <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+        Einstellungen fur Benachrichtigungen bei neuen Nachrichten.
+      </p>
+      <div className="space-y-3">
+        <label className="flex items-center justify-between gap-3 rounded-lg border p-3 cursor-pointer" style={{ borderColor: "var(--border)", background: "var(--surface)" }}>
+          <div>
+            <div className="text-sm font-medium" style={{ color: "var(--text)" }}>Push-Benachrichtigung</div>
+            <div className="text-xs" style={{ color: "var(--text-muted)" }}>Browser-Benachrichtigung bei neuer Nachricht</div>
+          </div>
+          <input
+            type="checkbox"
+            checked={pushEnabled}
+            onChange={(e) => { setPushEnabled(e.target.checked); setSuccess(false); }}
+            className="h-5 w-5 rounded"
+          />
+        </label>
+        <label className="flex items-center justify-between gap-3 rounded-lg border p-3 cursor-pointer" style={{ borderColor: "var(--border)", background: "var(--surface)" }}>
+          <div>
+            <div className="text-sm font-medium" style={{ color: "var(--text)" }}>E-Mail-Benachrichtigung</div>
+            <div className="text-xs" style={{ color: "var(--text-muted)" }}>E-Mail bei neuer Nachricht an {user?.email}</div>
+          </div>
+          <input
+            type="checkbox"
+            checked={emailEnabled}
+            onChange={(e) => { setEmailEnabled(e.target.checked); setSuccess(false); }}
+            className="h-5 w-5 rounded"
+          />
+        </label>
+      </div>
+      {error && <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>}
+      {success && <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-600">{"✓"} Gespeichert</div>}
+      <button
+        type="button"
+        className="btn-primary"
+        onClick={handleSave}
+        disabled={saving || !isDirty}
+      >
+        {saving ? "Speichert..." : "Speichern"}
+      </button>
+    </section>
+  );
+}
+
 export default function SettingsPage() {
   const { theme, accent, setTheme, setAccent, themes, accents } = useTheme();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
 
   return (
     <div className="space-y-4">
@@ -100,6 +177,8 @@ export default function SettingsPage() {
           </p>
         </div>
       </section>
+
+      <NotificationSettings user={user} onSaved={() => refreshUser()} />
 
       {/* Account info */}
       <section className="card">

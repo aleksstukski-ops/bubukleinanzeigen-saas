@@ -372,12 +372,23 @@ async def _handle_scrape_messages(job: Job, db: AsyncSession, session_manager: S
                 )
                 user = user_result.scalar_one_or_none()
                 if user:
-                    await send_push_to_user(
-                        db, user.id,
-                        title="Neue Nachricht",
-                        body=f"{new_unread} neue Nachricht{'en' if new_unread > 1 else ''} auf {account.label}",
-                        url="/messages",
-                    )
+                    msg_text = f"{new_unread} neue Nachricht{'en' if new_unread > 1 else ''} auf {account.label}"
+                    if getattr(user, "notify_push_new_message", True):
+                        await send_push_to_user(
+                            db, user.id,
+                            title="Neue Nachricht",
+                            body=msg_text,
+                            url="/messages",
+                        )
+                    if getattr(user, "notify_email_new_message", False):
+                        import asyncio as _asyncio
+                        from app.services.email import send_email as _send_email
+                        _asyncio.ensure_future(asyncio.to_thread(
+                            _send_email,
+                            to=user.email,
+                            subject=f"[BubuKleinanzeigen] {msg_text}",
+                            body_html=f"<p>{msg_text}</p><p><a href='https://bubuanzeigen.de/messages'>Jetzt ansehen</a></p>",
+                        ))
 
             return {"count": len(scraped_items), "valid": True}
         finally:

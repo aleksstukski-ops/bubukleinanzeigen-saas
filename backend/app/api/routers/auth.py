@@ -8,7 +8,7 @@ from app.api.deps import get_current_user
 from app.core.security import create_access_token, create_refresh_token, decode_token, hash_password, verify_password
 from app.db.session import get_db
 from app.models import User
-from app.schemas.auth import PasswordResetIn, PasswordResetRequestIn, RefreshTokenIn, TokenPair, UserLoginIn, UserOut, UserRegisterIn
+from app.schemas.auth import NotificationSettingsIn, PasswordResetIn, PasswordResetRequestIn, RefreshTokenIn, TokenPair, UserLoginIn, UserOut, UserRegisterIn
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 limiter = Limiter(key_func=get_remote_address)
@@ -63,6 +63,30 @@ async def me(user: User = Depends(get_current_user)):
         account_limit=user.account_limit,
         subscription_status=user.subscription_status,
         subscription_expires_at=user.subscription_expires_at,
+        notify_push_new_message=user.notify_push_new_message,
+        notify_email_new_message=user.notify_email_new_message,
+        created_at=user.created_at,
+    )
+
+
+@router.patch("/notification-settings", response_model=UserOut)
+async def update_notification_settings(
+    data: NotificationSettingsIn,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    user.notify_push_new_message = data.notify_push_new_message
+    user.notify_email_new_message = data.notify_email_new_message
+    await db.commit()
+    await db.refresh(user)
+    return UserOut(
+        id=user.id, email=user.email, full_name=user.full_name,
+        is_active=user.is_active, plan=user.plan,
+        account_limit=user.account_limit,
+        subscription_status=user.subscription_status,
+        subscription_expires_at=user.subscription_expires_at,
+        notify_push_new_message=user.notify_push_new_message,
+        notify_email_new_message=user.notify_email_new_message,
         created_at=user.created_at,
     )
 

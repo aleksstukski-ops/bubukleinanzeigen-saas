@@ -34,7 +34,14 @@ class UserOut(BaseModel):
     account_limit: int
     subscription_status: str | None
     subscription_expires_at: datetime | None
+    notify_push_new_message: bool = True
+    notify_email_new_message: bool = False
     created_at: datetime
+
+
+class NotificationSettingsIn(BaseModel):
+    notify_push_new_message: bool
+    notify_email_new_message: bool
 
 
 class PasswordResetRequestIn(BaseModel):
