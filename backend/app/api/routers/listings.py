@@ -7,12 +7,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models import JobType, KleinanzeigenAccount, Listing, User
+from app.models.domain import ListingStat
 from app.schemas.resources import (
     BumpScheduleIn,
     JobOut,
     ListingActionIn,
     ListingListResponse,
     ListingOut,
+    ListingStatOut,
     ListingUpdateIn,
 )
 from app.services.jobs import enqueue_job
@@ -103,6 +105,23 @@ async def list_listings(
         await enqueue_job(db, JobType.SCRAPE_LISTINGS, account_id=account.id, priority=5)
 
     return ListingListResponse(items=listings, stale=is_stale, last_updated=last_updated)
+
+
+@router.get("/{listing_id}/stats", response_model=list[ListingStatOut])
+async def get_listing_stats(
+    listing_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return historical view/bookmark stats for a listing (last 30 days, max 200 points)."""
+    listing = await _get_listing_for_user(db, kleinanzeigen_id=listing_id, user_id=user.id)
+    result = await db.execute(
+        select(ListingStat)
+        .where(ListingStat.listing_id == listing.id)
+        .order_by(ListingStat.scraped_at.desc())
+        .limit(200)
+    )
+    return result.scalars().all()
 
 
 @router.post("/{listing_id}/bump", response_model=JobOut)

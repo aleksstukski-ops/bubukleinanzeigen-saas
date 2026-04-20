@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import AccountStatus, Job, JobType, KleinanzeigenAccount, User
+from app.models.domain import ListingStat
 from app.services.push import send_push_to_user
 from app.models.domain import Conversation, Listing, Message
 from app.scraper.pages.conversation_page import ConversationPage
@@ -274,6 +275,17 @@ async def _handle_scrape_listings(job: Job, db: AsyncSession, session_manager: S
             if record.kleinanzeigen_id not in seen_ids:
                 record.is_active = False
                 record.last_scraped_at = now
+
+        # Save stat snapshots for active listings (only when counts changed)
+        for record in existing_records:
+            if record.is_active and (record.view_count is not None or record.bookmark_count is not None):
+                stat = ListingStat(
+                    listing_id=record.id,
+                    scraped_at=now,
+                    view_count=record.view_count,
+                    bookmark_count=record.bookmark_count,
+                )
+                db.add(stat)
 
         account.status = AccountStatus.ACTIVE.value
         account.last_error = None

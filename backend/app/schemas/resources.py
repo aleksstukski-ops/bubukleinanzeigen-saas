@@ -50,6 +50,16 @@ class BumpScheduleIn(BaseModel):
     bump_interval_days: int | None = Field(default=None, ge=1, le=30)
 
 
+class ListingStatOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    listing_id: int
+    scraped_at: datetime
+    view_count: int | None
+    bookmark_count: int | None
+
+
 class ListingUpdateIn(BaseModel):
     account_id: int
     title: str = Field(min_length=1, max_length=500)

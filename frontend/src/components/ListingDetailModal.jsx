@@ -1,6 +1,7 @@
 import { useState } from "react";
 import api from "../lib/api";
 import Modal from "./Modal";
+import ListingStatsChart from "./ListingStatsChart";
 
 function formatDate(value) {
   if (!value) return "-";
@@ -172,6 +173,11 @@ export default function ListingDetailModal({
         </div>
 
         <AutoBumpSection listing={listing} onUpdated={onListingUpdated} />
+
+        <div className="rounded-lg border border-slate-200 p-3">
+          <div className="text-xs font-semibold text-slate-500 mb-1">{"📊"} Views & Bookmarks über Zeit</div>
+          <ListingStatsChart listing={listing} />
+        </div>
 
         <div className="rounded-lg border border-slate-200 p-3">
           <div className="text-xs text-slate-500">Beschreibung</div>

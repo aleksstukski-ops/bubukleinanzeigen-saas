@@ -34,6 +34,16 @@ class Listing(Base):
     account: Mapped["KleinanzeigenAccount"] = relationship(back_populates="listings")
 
 
+class ListingStat(Base):
+    __tablename__ = "listing_stats"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    listing_id: Mapped[int] = mapped_column(ForeignKey("listings.id", ondelete="CASCADE"), index=True)
+    scraped_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    view_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    bookmark_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
 class Conversation(Base):
     __tablename__ = "conversations"
     __table_args__ = (
