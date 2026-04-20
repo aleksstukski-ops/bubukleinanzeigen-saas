@@ -9,6 +9,8 @@ const navItems = [
   { to: "/billing", label: "Abrechnung", icon: "💳", disabled: false },
 ];
 
+const adminNavItem = { to: "/admin", label: "Admin", icon: "🛡️", disabled: false };
+
 function NavItem({ item, mobile = false }) {
   if (item.disabled) {
     return (
@@ -73,6 +75,7 @@ export default function Layout() {
           {navItems.map((item) => (
             <NavItem key={item.to} item={item} />
           ))}
+          {user?.is_admin && <NavItem item={adminNavItem} />}
         </nav>
       </aside>
 
@@ -102,6 +105,7 @@ export default function Layout() {
           {navItems.map((item) => (
             <NavItem key={item.to} item={item} mobile />
           ))}
+          {user?.is_admin && <NavItem item={adminNavItem} mobile />}
         </div>
       </nav>
     </div>
