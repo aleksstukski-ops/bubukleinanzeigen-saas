@@ -9,6 +9,7 @@ from app.db.session import AsyncSessionLocal
 from app.models import Job, JobStatus
 from app.scraper.dispatcher import dispatch_job, JobError
 from app.scraper.session_manager import SessionManager
+from app.services.alerts import send_alert
 from app.shared.queue import queue
 
 log = logging.getLogger("scraper.worker")
@@ -86,6 +87,16 @@ class Worker:
         else:
             job.status = JobStatus.FAILED.value
             log.error("Job %s permanently failed: %s", job.id, job.error_message)
+            asyncio.create_task(send_alert(
+                subject=f"[BubuKA] Job {job.id} permanently failed",
+                body=(
+                    f"Job ID: {job.id}\n"
+                    f"Type:   {job.type}\n"
+                    f"Account: {job.account_id}\n"
+                    f"Attempts: {job.attempts}/{job.max_attempts}\n\n"
+                    f"Error:\n{job.error_message}"
+                ),
+            ))
 
     def request_shutdown(self) -> None:
         log.info("Shutdown signal received")

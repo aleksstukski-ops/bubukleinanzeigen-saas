@@ -27,6 +27,11 @@ class Settings(BaseSettings):
  SMTP_USER: str = ""
  SMTP_PASSWORD: str = ""
  SMTP_FROM: str = ""
+ ALERT_EMAIL_TO: str = ""  # comma-separated list of alert recipients
+
+ # Telegram alerts
+ TELEGRAM_BOT_TOKEN: str = ""
+ TELEGRAM_CHAT_ID: str = ""
 
  # VAPID (Web Push)
  VAPID_PRIVATE_KEY: str = ""

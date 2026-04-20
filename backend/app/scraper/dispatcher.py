@@ -15,6 +15,7 @@ from app.scraper.pages.login_page import LoginPage
 from app.scraper.pages.messages_page import MessagesPage
 from app.scraper.selectors import Selectors, UrlPatterns
 from app.scraper.session_manager import SessionManager
+from app.services.alerts import send_alert
 from app.services.sessions import get_account_storage_state, set_account_storage_state
 
 log = logging.getLogger("scraper.dispatcher")
@@ -243,6 +244,17 @@ async def _handle_scrape_listings(job: Job, db: AsyncSession, session_manager: S
             snapshot_path = await session_manager.capture_debug_snapshot(account.id, job.id)
             if snapshot_path:
                 log.warning("Debug snapshot saved at: %s", snapshot_path)
+            import asyncio as _asyncio
+            _asyncio.ensure_future(send_alert(
+                subject=f"[BubuKA] Canary: 0 listings scraped (account {account.id})",
+                body=(
+                    f"Account ID: {account.id}\n"
+                    f"Label: {account.label}\n"
+                    f"Job ID: {job.id}\n\n"
+                    "0 listings returned — possible DOM change on Kleinanzeigen."
+                    + (f"\nSnapshot: {snapshot_path}" if snapshot_path else "")
+                ),
+            ))
 
         existing_result = await db.execute(select(Listing).where(Listing.account_id == account.id))
         existing_records = existing_result.scalars().all()
@@ -299,6 +311,17 @@ async def _handle_scrape_messages(job: Job, db: AsyncSession, session_manager: S
                 snapshot_path = await session_manager.capture_debug_snapshot(account.id, job.id)
                 if snapshot_path:
                     log.warning("Debug snapshot saved at: %s", snapshot_path)
+                import asyncio as _asyncio
+                _asyncio.ensure_future(send_alert(
+                    subject=f"[BubuKA] Canary: 0 messages scraped (account {account.id})",
+                    body=(
+                        f"Account ID: {account.id}\n"
+                        f"Label: {account.label}\n"
+                        f"Job ID: {job.id}\n\n"
+                        "0 conversations returned — possible DOM change on Kleinanzeigen."
+                        + (f"\nSnapshot: {snapshot_path}" if snapshot_path else "")
+                    ),
+                ))
 
             existing_result = await db.execute(select(Conversation).where(Conversation.account_id == account.id))
             existing_records = existing_result.scalars().all()
