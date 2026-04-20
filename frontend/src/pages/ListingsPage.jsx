@@ -80,7 +80,6 @@ export default function ListingsPage() {
         accountLabel: accountLabelById.get(listing.account_id) || `Konto ${listing.account_id}`,
       }));
       setListings(allListings);
-      setIsStale(false);
     } catch (error) {
       setPageError(getErrorMessage(error));
     } finally {
