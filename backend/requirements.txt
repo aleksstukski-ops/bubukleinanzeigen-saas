@@ -15,3 +15,4 @@ playwright==1.47.0
 cryptography==43.0.1
 email-validator==2.2.0
 stripe==11.4.1
+pywebpush==2.0.0

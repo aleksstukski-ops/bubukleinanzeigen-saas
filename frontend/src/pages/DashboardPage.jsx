@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import api from "../lib/api";
 import { useAuth } from "../hooks/useAuth";
 import Modal from "../components/Modal";
+import { usePushNotifications } from "../hooks/usePushNotifications";
 
 function getErrorMessage(error) {
   return error?.response?.data?.detail || error?.message || "Aktion fehlgeschlagen.";
@@ -34,6 +35,7 @@ function getStatusBadgeClass(status) {
 
 export default function DashboardPage() {
   const { user, refreshUser } = useAuth();
+  const push = usePushNotifications();
   const [accounts, setAccounts] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [loadingAccounts, setLoadingAccounts] = useState(false);
@@ -104,6 +106,15 @@ export default function DashboardPage() {
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Link className="btn-secondary" to="/accounts">Konten verwalten</Link>
+              {push.isSupported && push.status !== "denied" && (
+                push.status === "granted"
+                  ? <button type="button" className="btn-secondary" onClick={push.unsubscribe} disabled={push.loading}>
+                      {'🔕'} {push.loading ? "..." : "Push aus"}
+                    </button>
+                  : <button type="button" className="btn-secondary" onClick={push.subscribe} disabled={push.loading}>
+                      {'🔔'} {push.loading ? "..." : "Push an"}
+                    </button>
+              )}
               <button type="button" className="btn-primary" onClick={() => setModalOpen(true)}>
                 {"⚙️"} Konto hinzufügen
               </button>

@@ -28,6 +28,11 @@ class Settings(BaseSettings):
  SMTP_PASSWORD: str = ""
  SMTP_FROM: str = ""
 
+ # VAPID (Web Push)
+ VAPID_PRIVATE_KEY: str = ""
+ VAPID_PUBLIC_KEY: str = ""
+ VAPID_SUBJECT: str = "mailto:admin@bubuanzeigen.de"
+
  # Stripe
  STRIPE_SECRET_KEY: str = ""
  STRIPE_WEBHOOK_SECRET: str = ""

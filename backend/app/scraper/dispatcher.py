@@ -5,7 +5,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import AccountStatus, Job, JobType, KleinanzeigenAccount
+from app.models import AccountStatus, Job, JobType, KleinanzeigenAccount, User
+from app.services.push import send_push_to_user
 from app.models.domain import Conversation, Listing, Message
 from app.scraper.pages.conversation_page import ConversationPage
 from app.scraper.pages.edit_listing_page import EditListingPage
@@ -322,6 +323,26 @@ async def _handle_scrape_messages(job: Job, db: AsyncSession, session_manager: S
             account.last_error = None
             account.last_scraped_at = now
             await db.commit()
+
+            # Push notification for new unread conversations
+            new_unread = sum(
+                1 for item in scraped_items
+                if item.get("unread_count", 0) > 0
+                and item["kleinanzeigen_id"] not in existing_by_ka_id
+            )
+            if new_unread > 0:
+                user_result = await db.execute(
+                    select(User).join(KleinanzeigenAccount, KleinanzeigenAccount.user_id == User.id)
+                    .where(KleinanzeigenAccount.id == account.id)
+                )
+                user = user_result.scalar_one_or_none()
+                if user:
+                    await send_push_to_user(
+                        db, user.id,
+                        title="Neue Nachricht",
+                        body=f"{new_unread} neue Nachricht{'en' if new_unread > 1 else ''} auf {account.label}",
+                        url="/messages",
+                    )
 
             return {"count": len(scraped_items), "valid": True}
         finally:
