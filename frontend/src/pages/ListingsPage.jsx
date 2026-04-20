@@ -63,6 +63,30 @@ export default function ListingsPage() {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
 
+  const handleExportCsv = () => {
+    if (filteredListings.length === 0) return;
+    const headers = ["ID", "Titel", "Preis", "Konto", "Views", "Gemerkt", "Status", "Letzter Sync", "URL"];
+    const rows = filteredListings.map((l) => [
+      l.kleinanzeigen_id,
+      `"${String(l.title || "").replace(/"/g, '""')}"`,
+      l.price || "",
+      `"${String(l.accountLabel || "").replace(/"/g, '""')}"`,
+      l.view_count ?? "",
+      l.bookmark_count ?? "",
+      l.is_active ? "Aktiv" : "Inaktiv",
+      l.last_scraped_at ? new Date(l.last_scraped_at).toLocaleString("de-DE") : "",
+      l.url || "",
+    ]);
+    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `inserate-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const loadListings = async () => {
     setLoading(true);
     setPageError("");
@@ -240,9 +264,14 @@ export default function ListingsPage() {
               <h1 className="text-2xl font-semibold text-slate-900">Inserate</h1>
               <p className="mt-2 text-sm text-slate-500">Alle Inserate aus deinen aktiven Konten in einer Übersicht.</p>
             </div>
-            <button type="button" onClick={loadListings} disabled={loading} className="btn-secondary">
-              {loading ? "Lädt..." : "Neu laden"}
-            </button>
+            <div className="flex gap-2">
+              <button type="button" onClick={handleExportCsv} disabled={loading || listings.length === 0} className="btn-secondary">
+                {"📥"} CSV
+              </button>
+              <button type="button" onClick={loadListings} disabled={loading} className="btn-secondary">
+                {loading ? "Ladt..." : "Neu laden"}
+              </button>
+            </div>
           </div>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
