@@ -53,7 +53,8 @@ async def list_conversations(
     result = await db.execute(query)
     conversations = result.scalars().all()
 
-    latest_by_account = {}
+    # Determine latest scrape time per account (no DB query per account)
+    latest_by_account: dict[int, datetime | None] = {}
     for conversation in conversations:
         current_latest = latest_by_account.get(conversation.account_id)
         if current_latest is None or (
@@ -62,23 +63,22 @@ async def list_conversations(
             latest_by_account[conversation.account_id] = conversation.last_scraped_at
 
     now = datetime.now(timezone.utc)
-    for account_db_id, last_scraped_at in latest_by_account.items():
-        is_stale = True
-        if last_scraped_at is not None:
-            age = (now - last_scraped_at).total_seconds()
-            is_stale = age > STALE_SECONDS
+    stale_account_ids = [
+        aid for aid, last_scraped_at in latest_by_account.items()
+        if last_scraped_at is None or (now - last_scraped_at).total_seconds() > STALE_SECONDS
+    ]
 
-        if is_stale:
-            account_result = await db.execute(
-                select(KleinanzeigenAccount).where(
-                    KleinanzeigenAccount.id == account_db_id,
-                    KleinanzeigenAccount.user_id == user.id,
-                    KleinanzeigenAccount.status == "active",
-                )
+    if stale_account_ids:
+        # Single batch query instead of N individual queries
+        active_result = await db.execute(
+            select(KleinanzeigenAccount).where(
+                KleinanzeigenAccount.id.in_(stale_account_ids),
+                KleinanzeigenAccount.user_id == user.id,
+                KleinanzeigenAccount.status == "active",
             )
-            account = account_result.scalar_one_or_none()
-            if account is not None:
-                await enqueue_job(db, JobType.SCRAPE_MESSAGES, account_id=account.id, priority=4)
+        )
+        for account in active_result.scalars().all():
+            await enqueue_job(db, JobType.SCRAPE_MESSAGES, account_id=account.id, priority=4)
 
     return conversations
 

@@ -60,42 +60,27 @@ export default function ListingsPage() {
   const [editError, setEditError] = useState("");
   const [activeActionId, setActiveActionId] = useState("");
   const [processingById, setProcessingById] = useState({});
-  const [isStale, setIsStale] = useState(false);
-  const staleTimerRef = { current: null };
 
   const loadListings = async () => {
     setLoading(true);
     setPageError("");
     try {
-      const accountsResponse = await api.get("/ka-accounts");
+      // Single call for all accounts — avoids N+1 round trips
+      const [accountsResponse, allListingsResponse] = await Promise.all([
+        api.get("/ka-accounts"),
+        api.get("/listings/all"),
+      ]);
+
       const accountItems = accountsResponse.data || [];
       setAccounts(accountItems);
 
-      const listingResponses = await Promise.all(
-        accountItems.map(async (account) => {
-          try {
-            const response = await api.get(`/listings?account_id=${account.id}`);
-            const items = response.data?.items || [];
-            const result = items.map((listing) => ({ ...listing, accountLabel: account.label }));
-            result._stale = response.data?.stale || false;
-            return result;
-          } catch (error) {
-            return [];
-          }
-        })
-      );
-      const allListings = listingResponses.flat();
+      const accountLabelById = new Map(accountItems.map((a) => [a.id, a.label]));
+      const allListings = (allListingsResponse.data || []).map((listing) => ({
+        ...listing,
+        accountLabel: accountLabelById.get(listing.account_id) || `Konto ${listing.account_id}`,
+      }));
       setListings(allListings);
-
-      // Auto-refresh: check if any account returned stale data
-      const anyStale = listingResponses.some((items) => items._stale);
-      setIsStale(anyStale);
-      if (anyStale && staleTimerRef.current === null) {
-        staleTimerRef.current = setTimeout(() => {
-          staleTimerRef.current = null;
-          loadListings();
-        }, 5000);
-      }
+      setIsStale(false);
     } catch (error) {
       setPageError(getErrorMessage(error));
     } finally {

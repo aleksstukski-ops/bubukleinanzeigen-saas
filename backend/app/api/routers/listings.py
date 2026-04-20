@@ -11,6 +11,7 @@ from app.schemas.resources import (
     JobOut,
     ListingActionIn,
     ListingListResponse,
+    ListingOut,
     ListingUpdateIn,
 )
 from app.services.jobs import enqueue_job
@@ -55,6 +56,24 @@ async def _get_listing_for_user(
     if not listing:
         raise HTTPException(status_code=404, detail="Listing not found")
     return listing
+
+
+@router.get("/all", response_model=list[ListingOut])
+async def list_all_listings(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return all active listings for all accounts belonging to this user — single DB query."""
+    result = await db.execute(
+        select(Listing)
+        .join(KleinanzeigenAccount, KleinanzeigenAccount.id == Listing.account_id)
+        .where(
+            KleinanzeigenAccount.user_id == user.id,
+            Listing.is_active.is_(True),
+        )
+        .order_by(Listing.last_scraped_at.desc())
+    )
+    return result.scalars().all()
 
 
 @router.get("", response_model=ListingListResponse)
