@@ -1,5 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from app.services.email import send_email
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user
@@ -9,10 +11,12 @@ from app.models import User
 from app.schemas.auth import PasswordResetIn, PasswordResetRequestIn, RefreshTokenIn, TokenPair, UserLoginIn, UserOut, UserRegisterIn
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+limiter = Limiter(key_func=get_remote_address)
 
 
 @router.post("/register", response_model=TokenPair, status_code=status.HTTP_201_CREATED)
-async def register(data: UserRegisterIn, db: AsyncSession = Depends(get_db)):
+@limiter.limit("10/minute")
+async def register(request: Request, data: UserRegisterIn, db: AsyncSession = Depends(get_db)):
     existing = await db.execute(select(User).where(User.email == data.email))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
@@ -24,7 +28,8 @@ async def register(data: UserRegisterIn, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/login", response_model=TokenPair)
-async def login(data: UserLoginIn, db: AsyncSession = Depends(get_db)):
+@limiter.limit("20/minute")
+async def login(request: Request, data: UserLoginIn, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == data.email))
     user = result.scalar_one_or_none()
     if not user or not verify_password(data.password, user.password_hash):
@@ -63,7 +68,8 @@ async def me(user: User = Depends(get_current_user)):
 
 
 @router.post("/forgot-password")
-async def forgot_password(data: PasswordResetRequestIn, db: AsyncSession = Depends(get_db)):
+@limiter.limit("5/minute")
+async def forgot_password(request: Request, data: PasswordResetRequestIn, db: AsyncSession = Depends(get_db)):
 
     result = await db.execute(select(User).where(User.email == data.email))
     user = result.scalar_one_or_none()
@@ -89,7 +95,8 @@ async def forgot_password(data: PasswordResetRequestIn, db: AsyncSession = Depen
 
 
 @router.post("/reset-password")
-async def reset_password(data: PasswordResetIn, db: AsyncSession = Depends(get_db)):
+@limiter.limit("10/minute")
+async def reset_password(request: Request, data: PasswordResetIn, db: AsyncSession = Depends(get_db)):
 
     payload = decode_token(data.token, expected_type="access")
     if payload is None:
