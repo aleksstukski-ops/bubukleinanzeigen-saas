@@ -12,6 +12,7 @@ import ListingsPage from "./pages/ListingsPage";
 import MessagesPage from "./pages/MessagesPage";
 import BillingPage from "./pages/BillingPage";
 import AdminPage from "./pages/AdminPage";
+import SettingsPage from "./pages/SettingsPage";
 
 export default function App() {
   return (
@@ -32,6 +33,7 @@ export default function App() {
               <Route path="/messages" element={<MessagesPage />} />
               <Route path="/billing" element={<BillingPage />} />
               <Route path="/admin" element={<AdminPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
             </Route>
           </Route>
 

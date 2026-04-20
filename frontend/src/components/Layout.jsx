@@ -7,6 +7,7 @@ const navItems = [
   { to: "/messages", label: "Nachrichten", icon: "💬", disabled: false },
   { to: "/accounts", label: "Konten", icon: "⚙️", disabled: false },
   { to: "/billing", label: "Abrechnung", icon: "💳", disabled: false },
+  { to: "/settings", label: "Einstellungen", icon: "🎨", disabled: false },
 ];
 
 const adminNavItem = { to: "/admin", label: "Admin", icon: "🛡️", disabled: false };
@@ -16,9 +17,10 @@ function NavItem({ item, mobile = false }) {
     return (
       <div
         className={[
-          "flex items-center gap-3 rounded-lg px-3 py-2 text-slate-400",
+          "flex items-center gap-3 rounded-lg px-3 py-2",
           mobile ? "min-w-0 flex-1 flex-col gap-1 px-2 py-2 text-xs" : "",
         ].join(" ")}
+        style={{ color: "var(--text-subtle)" }}
         aria-disabled="true"
       >
         <span className={mobile ? "text-lg" : "text-xl"}>{item.icon}</span>
@@ -33,12 +35,17 @@ function NavItem({ item, mobile = false }) {
       to={item.to}
       className={({ isActive }) =>
         [
-          "transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2",
+          "transition focus:outline-none",
           mobile
-            ? `flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-2 py-2 text-xs ${isActive ? "text-blue-600" : "text-slate-500"}`
-            : `flex items-center gap-3 rounded-lg px-3 py-2 ${isActive ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-100"}`,
+            ? `flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-2 py-2 text-xs`
+            : `flex items-center gap-3 rounded-lg px-3 py-2`,
         ].join(" ")
       }
+      style={({ isActive }) => ({
+        background: isActive && !mobile ? "var(--accent-bg)" : "transparent",
+        color: isActive ? "var(--accent)" : "var(--text-muted)",
+        fontWeight: isActive ? 600 : undefined,
+      })}
     >
       <span className={mobile ? "text-lg" : "text-xl"}>{item.icon}</span>
       <span>{item.label}</span>
@@ -50,7 +57,7 @@ export default function Layout() {
   const { user, logout, sessionExpired, dismissSessionExpired } = useAuth();
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex min-h-screen" style={{ background: "var(--bg)" }}>
       {sessionExpired && (
         <div className="fixed inset-x-0 top-0 z-50 flex items-center justify-between gap-3 bg-amber-500 px-4 py-3 text-sm font-medium text-white shadow-md">
           <span>{'⚠️'} Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.</span>
@@ -63,13 +70,13 @@ export default function Layout() {
           </button>
         </div>
       )}
-      <aside className={[
-        "hidden w-60 flex-shrink-0 border-r border-slate-200 bg-white md:flex md:flex-col",
-        sessionExpired ? "pt-12" : "",
-      ].join(" ")}>
-        <div className="border-b border-slate-200 px-4 py-5">
-          <div className="text-lg font-semibold text-slate-900">BubuKleinanzeigen</div>
-          <div className="text-xs text-slate-500">SaaS Control Panel</div>
+      <aside
+        className={["hidden w-60 flex-shrink-0 border-r md:flex md:flex-col", sessionExpired ? "pt-12" : ""].join(" ")}
+        style={{ background: "var(--surface)", borderColor: "var(--border)" }}
+      >
+        <div className="border-b px-4 py-5" style={{ borderColor: "var(--border)" }}>
+          <div className="text-lg font-semibold" style={{ color: "var(--text)" }}>BubuKleinanzeigen</div>
+          <div className="text-xs" style={{ color: "var(--text-subtle)" }}>SaaS Control Panel</div>
         </div>
         <nav className="flex flex-col gap-1 p-3">
           {navItems.map((item) => (
@@ -80,11 +87,14 @@ export default function Layout() {
       </aside>
 
       <div className={["flex min-w-0 flex-1 flex-col", sessionExpired ? "pt-12" : ""].join(" ")}>
-        <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
+        <header
+          className="sticky top-0 z-20 border-b backdrop-blur"
+          style={{ background: "color-mix(in srgb, var(--surface) 95%, transparent)", borderColor: "var(--border)" }}
+        >
           <div className="flex min-h-16 items-center justify-between gap-3 px-4 py-3 md:px-6">
             <div className="min-w-0">
-              <div className="text-base font-semibold text-slate-900 md:hidden">BubuKleinanzeigen</div>
-              <div className="truncate text-sm text-slate-500">{user?.email || "-"}</div>
+              <div className="text-base font-semibold md:hidden" style={{ color: "var(--text)" }}>BubuKleinanzeigen</div>
+              <div className="truncate text-sm" style={{ color: "var(--text-muted)" }}>{user?.email || "-"}</div>
             </div>
             <button type="button" onClick={logout} className="btn-secondary shrink-0">
               Abmelden
@@ -98,8 +108,8 @@ export default function Layout() {
       </div>
 
       <nav
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white md:hidden"
-        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+        className="fixed inset-x-0 bottom-0 z-30 border-t md:hidden"
+        style={{ background: "var(--surface)", borderColor: "var(--border)", paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
         <div className="mx-auto flex max-w-screen-sm items-center justify-around gap-1 px-2 py-2">
           {navItems.map((item) => (
