@@ -216,32 +216,54 @@ class Selectors:
         '[class*="UnreadBadge"]',
     ]
 
+    # Selector string used for waiting / query_selector_all (single selector, not list)
+    # New SPA DOM (2026-04): message rows are <li data-testid="UUID">
+    CONVERSATION_MESSAGE_ROW_SELECTOR = 'li[data-testid]'
+
     CONVERSATION_MESSAGE_ROW = [
+        # New SPA DOM (2026-04): each message is a <li> with a UUID data-testid
+        'li[data-testid]',
+        # Legacy selectors
         '[data-testid*="message"]',
         '[class*="message-item"]',
         '[class*="chat-message"]',
     ]
 
     CONVERSATION_MESSAGE_BODY = [
+        # New SPA DOM: message text container
+        '[class*="Message--Text"]',
+        '[class*="Message-outbound"] [class*="Message--Text"]',
+        # Legacy selectors
         '[data-testid*="message-body"]',
         '[class*="message-body"]',
         '[class*="bubble"]',
-        "p",
     ]
 
     CONVERSATION_MESSAGE_META = [
+        # New SPA DOM: date/time for a message
+        '[class*="MessageListItem-Date"]',
+        '[class*="MessageListItem--Date"]',
+        # Legacy selectors
         '[data-testid*="message-meta"]',
         '[class*="message-meta"]',
         "time",
     ]
 
     CONVERSATION_MESSAGE_OUTGOING = [
+        # New SPA DOM: outgoing messages have data-testid="OUTBOUND" inside
+        '[data-testid="OUTBOUND"]',
+        '[class*="MessageListItem-outbound"]',
+        # Legacy selectors
         '[data-testid*="outgoing"]',
         '[class*="outgoing"]',
         '[class*="sent"]',
     ]
 
     CONVERSATION_REPLY_TEXTAREA = [
+        # New SPA DOM: reply textarea has id="nachricht"
+        'textarea#nachricht',
+        'textarea[id="nachricht"]',
+        # Legacy selectors
         'textarea[name="reply"]',
         'textarea[placeholder*="Antwort"]',
         'textarea[placeholder*="Nachricht"]',
@@ -249,9 +271,12 @@ class Selectors:
     ]
 
     CONVERSATION_REPLY_SUBMIT = [
+        # New SPA DOM: send button
+        'button[data-testid="submit-button"][aria-label="Senden"]',
+        'button[data-testid="submit-button"]',
+        'button[aria-label="Senden"]',
+        # Legacy selectors
         'button[type="submit"]',
-        'button:has-text("Senden")',
-        'button:has-text("Antworten")',
     ]
 
 
