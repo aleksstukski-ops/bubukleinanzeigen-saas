@@ -33,7 +33,7 @@ echo "[$(date -Iseconds)] Starting backup → ${DEST}"
 # pg_dump runs inside the postgres container; output piped to gzip on host
 docker compose \
   -p "${COMPOSE_PROJECT}" \
-  -f "$(dirname "$0")/../docker-compose.prod.yml" \
+  -f "$(dirname "$0")/../$([ -f "$(dirname "$0")/../docker-compose.prod.yml" ] && echo docker-compose.prod.yml || echo docker-compose.yml)" \
   exec -T postgres \
   pg_dump -U "${POSTGRES_USER}" "${POSTGRES_DB}" \
   | gzip > "${DEST}"
