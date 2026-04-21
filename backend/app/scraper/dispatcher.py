@@ -138,6 +138,23 @@ async def _mark_session_expired(account: KleinanzeigenAccount, db: AsyncSession,
     account.last_error = message
     await db.commit()
 
+    # Notify the account owner via push
+    try:
+        user_result = await db.execute(
+            select(User).join(KleinanzeigenAccount, KleinanzeigenAccount.user_id == User.id)
+            .where(KleinanzeigenAccount.id == account.id)
+        )
+        user = user_result.scalar_one_or_none()
+        if user and getattr(user, "notify_push_new_message", True):
+            await send_push_to_user(
+                db, user.id,
+                title="Session abgelaufen",
+                body=f"Konto \"{account.label}\" muss neu eingeloggt werden.",
+                url="/accounts",
+            )
+    except Exception:
+        log.exception("Failed to send session-expired push for account %s", account.id)
+
 
 async def _handle_start_login(job: Job, db: AsyncSession, session_manager: SessionManager) -> dict[str, Any]:
     account = await _get_account(db, job.account_id)

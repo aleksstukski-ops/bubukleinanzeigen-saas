@@ -32,6 +32,10 @@ class Worker:
         scheduler_task = asyncio.create_task(self._bump_scheduler_loop())
         self._tasks.add(scheduler_task)
         scheduler_task.add_done_callback(self._tasks.discard)
+        # Start session health checker
+        session_checker_task = asyncio.create_task(self._session_checker_loop())
+        self._tasks.add(session_checker_task)
+        session_checker_task.add_done_callback(self._tasks.discard)
         try:
             while not self._shutdown.is_set():
                 item = await queue.pop(timeout=3)
@@ -97,6 +101,50 @@ class Worker:
                 db.add(listing)
             await db.commit()
             log.info("Auto-bump scheduler: enqueued %s bump job(s)", len(listings))
+
+    async def _session_checker_loop(self) -> None:
+        """Every 6 hours, enqueue VERIFY_SESSION for every active account that has a session."""
+        INTERVAL = 6 * 3600  # 6 hours in seconds
+        # Initial delay: 10 minutes after startup so the worker is warmed up first
+        initial_delay = 600
+        for _ in range(initial_delay):
+            if self._shutdown.is_set():
+                return
+            await asyncio.sleep(1)
+        while not self._shutdown.is_set():
+            try:
+                await self._check_sessions()
+            except Exception:
+                log.exception("Error in session checker loop")
+            for _ in range(INTERVAL):
+                if self._shutdown.is_set():
+                    return
+                await asyncio.sleep(1)
+
+    async def _check_sessions(self) -> None:
+        from app.models import AccountStatus, KleinanzeigenAccount
+        from sqlalchemy import select as _select
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                _select(KleinanzeigenAccount).where(
+                    KleinanzeigenAccount.session_encrypted.isnot(None),
+                    KleinanzeigenAccount.status == AccountStatus.ACTIVE.value,
+                    KleinanzeigenAccount.is_enabled.is_(True),
+                )
+            )
+            accounts = result.scalars().all()
+            if not accounts:
+                return
+            log.info("Session checker: verifying %s active account(s)", len(accounts))
+            for account in accounts:
+                await enqueue_job(
+                    db,
+                    JobType.VERIFY_SESSION,
+                    account_id=account.id,
+                    priority=5,
+                )
+            await db.commit()
+            log.info("Session checker: enqueued %s VERIFY_SESSION job(s)", len(accounts))
 
     async def _handle(self, job_id: int) -> None:
         async with self.semaphore:
