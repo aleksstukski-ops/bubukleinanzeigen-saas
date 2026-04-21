@@ -1,6 +1,6 @@
 # Project State
 
-Zuletzt aktualisiert: 2026-04-21
+Zuletzt aktualisiert: 2026-04-21 (Session 2)
 
 ## Aktueller Stand
 
@@ -70,6 +70,9 @@ Naechster Schritt: Chef-Tasks (Stripe, Telegram, VAPID Keys) → Live-Test → L
 - ListingsPage: N API-Calls pro Account -> jetzt /listings/all (1 Call)
 - PasswordResetRequestIn: war `str` statt `EmailStr` -- gefixt
 - PWA-Icons: *.png war in .gitignore, Exception fuer frontend/public/*.png hinzugefuegt
+- Nachrichten-Scraper: Kleinanzeigen hat SPA-Migration durchgefuehrt (kein iframe mehr).
+  Neues DOM: article.ConversationListItem, ID aus input[data-testid]. Fix committed 2026-04-21.
+- Scraper Worker: asyncio.gather in shutdown konnte haengen; 15s timeout + cancel hinzugefuegt.
 
 ## Session-Log
 
