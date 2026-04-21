@@ -17,16 +17,23 @@ class Selectors:
     ]
 
     AD_TITLE = [
+        # Currently matching on live DOM (2026-04-21):
+        '[class*="title"] a',
+        'li[class*="title"] a',
+        # Fallbacks for older/alternate DOM:
         "h2 a",
         "a.ellipsis",
-        '[class*="title"] a',
+        'article a[href*="/s-anzeige/"]',
     ]
 
     AD_PRICE = [
-        ".aditem-main--middle--price-shipping--price",
-        '[class*="price"]',
+        # Currently matching on live DOM (2026-04-21):
         "li.text-title3.text-secondary",
         'li[class*="text-title3"]',
+        # Fallbacks for older/alternate DOM:
+        ".aditem-main--middle--price-shipping--price",
+        '[class*="price-shipping"] span',
+        '[class*="price"]',
     ]
 
     AD_IMAGE = [
@@ -219,33 +226,47 @@ class Selectors:
     ]
 
 
-    # Create listing form selectors (best-guess, verify against live DOM if needed)
+    # Create listing form selectors
+    # NOTE: Kleinanzeigen uses a multi-step category wizard before showing the form.
+    # Bypass it by passing categoryId= in the URL (see CREATE_LISTING_WITH_CATEGORY_URL).
+    # Selectors verified patterns first, then generic fallbacks.
     CREATE_TITLE_INPUT = [
         'input[name="title"]',
+        'input[data-testid*="title"]',
         'input[id*="title"]',
+        'input[aria-label*="Titel"]',
         'input[placeholder*="Titel"]',
         '#ad-title',
+        # Last resort: first visible text input in the form
+        'form input[type="text"]:first-of-type',
     ]
 
     CREATE_DESCRIPTION_INPUT = [
         'textarea[name="description"]',
+        'textarea[data-testid*="description"]',
         'textarea[id*="description"]',
+        'textarea[aria-label*="Beschreibung"]',
         'textarea[placeholder*="Beschreibung"]',
         '#ad-description',
+        'form textarea',
     ]
 
     CREATE_PRICE_INPUT = [
         'input[name="price"]',
+        'input[data-testid*="price"]',
         'input[id*="price"]',
+        'input[aria-label*="Preis"]',
         'input[inputmode="numeric"]',
         '#ad-price',
     ]
 
     CREATE_SUBMIT_BUTTON = [
         'button[type="submit"][data-testid*="submit"]',
+        'button[data-testid*="post-ad"]',
         'button[type="submit"]:has-text("Anzeige aufgeben")',
         'button[type="submit"]:has-text("Jetzt einstellen")',
         'button[type="submit"]:has-text("Veröffentlichen")',
+        'button[type="submit"]:has-text("Weiter")',
         'button[type="submit"]',
     ]
 
@@ -254,6 +275,7 @@ class Selectors:
         'text="Deine Anzeige ist online"',
         'text="erfolgreich eingestellt"',
         '[class*="success"]',
+        '[data-testid*="success"]',
     ]
 
 
