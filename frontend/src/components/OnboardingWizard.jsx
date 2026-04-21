@@ -8,7 +8,9 @@ export function markOnboardingDone() {
 }
 
 export function needsOnboarding() {
-  return localStorage.getItem(STORAGE_KEY) !== "done";
+  // Only show wizard when explicitly triggered after registration ("pending").
+  // Absence of the key (existing users, first login) must NOT show the wizard.
+  return localStorage.getItem(STORAGE_KEY) === "pending";
 }
 
 function Step0CreateAccount({ onNext }) {
