@@ -1,6 +1,6 @@
 # Project State
 
-Zuletzt aktualisiert: 2026-04-21 (Session 2)
+Zuletzt aktualisiert: 2026-04-21 (Session 3)
 
 ## Aktueller Stand
 
@@ -70,8 +70,14 @@ Naechster Schritt: Chef-Tasks (Stripe, Telegram, VAPID Keys) → Live-Test → L
 - ListingsPage: N API-Calls pro Account -> jetzt /listings/all (1 Call)
 - PasswordResetRequestIn: war `str` statt `EmailStr` -- gefixt
 - PWA-Icons: *.png war in .gitignore, Exception fuer frontend/public/*.png hinzugefuegt
-- Nachrichten-Scraper: Kleinanzeigen hat SPA-Migration durchgefuehrt (kein iframe mehr).
-  Neues DOM: article.ConversationListItem, ID aus input[data-testid]. Fix committed 2026-04-21.
+- Nachrichten-Scraper (SCRAPE_MESSAGES): Kleinanzeigen SPA-Migration — kein iframe mehr.
+  Neues DOM: article.ConversationListItem, ID aus input[data-testid] ('lnjz:1s2bvvw:...').
+  MessagesPage.py: get_messages_frame() faellt auf self.page zurueck. 4 Conversations gescraped.
+- Konversations-Scraper (SCRAPE_CONVERSATION): ConversationPage.py vollstaendig neu.
+  Neue Selektoren: li[data-testid] fuer Messages, [class*=Message--Text] fuer Body,
+  data-testid=OUTBOUND fuer Outgoing, textarea#nachricht + data-testid=submit-button fuer Reply.
+  Direkte URL mit neuem ID-Format funktioniert (?conversationId=lnjz:1s2bvvw:...).
+  7 Messages erfolgreich gescraped (verifiziert Session 3).
 - Scraper Worker: asyncio.gather in shutdown konnte haengen; 15s timeout + cancel hinzugefuegt.
 
 ## Session-Log
