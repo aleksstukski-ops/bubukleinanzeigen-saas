@@ -1,11 +1,11 @@
 # Project State
 
-Zuletzt aktualisiert: 2026-04-20 (Quality Phase abgeschlossen)
+Zuletzt aktualisiert: 2026-04-21
 
 ## Aktueller Stand
 
-Phase: **Roadmap COMPLETE + Quality Phase DONE**
-Naechster Schritt: Echte Stripe-Keys eintragen (falls noch nicht), live testen, Launch.
+Phase: **ALLE FEATURES FERTIG — Bereit fuer Launch**
+Naechster Schritt: Chef-Tasks (Stripe, Telegram, VAPID Keys) → Live-Test → Launch.
 
 ## Was funktioniert
 
@@ -72,6 +72,19 @@ Naechster Schritt: Echte Stripe-Keys eintragen (falls noch nicht), live testen, 
 - PWA-Icons: *.png war in .gitignore, Exception fuer frontend/public/*.png hinzugefuegt
 
 ## Session-Log
+
+### 2026-04-21: Feature-Finalisierung + E2E-Fix
+
+Fertiggestellt:
+1. Phase 7.9: Inserat erstellen (CreateListingPage, dispatcher, API, Frontend-Panel)
+2. Phase 7.11: Multi-Account Dashboard (Views + Ungelesene ueber alle Konten)
+3. Phase 7.12: Session Auto-Renewal (6h-Checker-Loop + Push-Notification bei Ablauf)
+4. recharts: npm install + Docker-Image rebuild (war nur auf Host installiert)
+5. scraper: pywebpush fehlte im Image → rebuild behoben
+6. Frontend: --renew-anon-volumes benoetigt damit node_modules-Volume aktualisiert wird
+7. Alembic Migrationen 0004-0006 ausgefuehrt (auto-bump, listing_stats, notification_settings)
+8. .env.example: FERNET_KEY, VAPID-Keys, Telegram, ALERT_EMAIL_TO ergaenzt
+9. MASTERPLAN.md + PROJECT_STATE.md auf aktuellen Stand gebracht
 
 ### 2026-04-20: Quality Phase
 

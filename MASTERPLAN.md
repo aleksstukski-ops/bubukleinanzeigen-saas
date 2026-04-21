@@ -124,90 +124,87 @@ Jede Nachricht an den Chef beginnt mit dem Empfaenger:
 
 ---
 
-## 6. Was FERTIG ist (Stand 2026-04-19)
+## 6. Was FERTIG ist (Stand 2026-04-21)
 
 ### Infrastruktur
 - [x] Docker Compose (5 Services: backend, frontend, postgres, redis, scraper)
+- [x] docker-compose.prod.yml (Nginx, kein Hot-Reload, Uptime Kuma)
 - [x] Cloudflare Tunnel → bubuanzeigen.de LIVE
 - [x] GitHub Repo public, alle Agents haben Zugriff
 - [x] SMTP (Gmail App-Passwort, Passwort-Reset komplett)
+- [x] Postgres Backup + Restore Scripts
 
 ### Auth
 - [x] Register, Login, Refresh, Logout
 - [x] Passwort vergessen (JWT-basierter Reset-Token + SMTP)
 - [x] JWT Access + Refresh Tokens
+- [x] Rate-Limiting (slowapi): login 20/min, register 10/min, forgot-pw 5/min
 
 ### Kleinanzeigen-Accounts
 - [x] CRUD mit Plan-Limit-Check
 - [x] cli_login.py (sichtbarer Browser auf Host, Session-Capture)
-- [x] FERNET_KEY Persistenz (f511aa2)
+- [x] FERNET_KEY Persistenz
 - [x] Session-Encryption/Decryption end-to-end verifiziert
+- [x] Session Auto-Renewal: 6h-Checker-Loop + Push-Alert bei Ablauf
 
 ### Scraper
 - [x] Selectors mit Fallback-Cascades
-- [x] BasePage, LoginPage, ListingsPage, EditListingPage
+- [x] BasePage, LoginPage, ListingsPage, EditListingPage, CreateListingPage
 - [x] MessagesPage, ConversationPage (iframe-Handling)
-- [x] Dispatcher mit ALLEN Handlern: START_LOGIN, VERIFY_SESSION, SCRAPE_LISTINGS, SCRAPE_MESSAGES, SCRAPE_CONVERSATION, SEND_MESSAGE, UPDATE_LISTING, DELETE_LISTING, BUMP_LISTING
-- [x] bookmark_count Scraping (f66fb6d) — nutzt gleichen Selektor wie view_count, Regex `(\d+)\s*mal gemerkt`
+- [x] Dispatcher: START_LOGIN, VERIFY_SESSION, SCRAPE_LISTINGS, SCRAPE_MESSAGES, SCRAPE_CONVERSATION, SEND_MESSAGE, UPDATE_LISTING, DELETE_LISTING, BUMP_LISTING, CREATE_LISTING
+- [x] bookmark_count Scraping — Regex `(\d+)\s*mal gemerkt`
+- [x] Canary-Alerts (0 Ergebnisse) → Email + Telegram
+- [x] listing_stats Tabelle — Views/Bookmarks-Verlauf
+
+### Backend API
+- [x] Globaler Exception Handler
+- [x] N+1 Fixes: /listings/all, messages batch, listing_count batch
+- [x] Input-Validierung: EmailStr
+- [x] POST /listings/create, PATCH /listings/{id}/bump-schedule
+- [x] GET /listings/{id}/stats, POST /listings/bulk-action
+- [x] PATCH /auth/notification-settings
 
 ### Frontend
-- [x] Dashboard, Konten (Login-Button, Status-Badges)
-- [x] Inserate (Filter, Sort, Detail-Modal, Edit-Modal, Views + Bookmark-Count)
-- [x] Nachrichten (Inbox, Chat-View, Reply, 30s Polling)
-- [x] LoginPage (sauber, ein Passwort-vergessen-Link)
-
-### Scraper-Fixes
-- [x] Echte Bilder (srcset-Parsing)
-- [x] Preise (Meine-Anzeigen-DOM)
-- [x] Views (neuer Selektor)
-- [x] Titel ("Anzeige "-Prefix entfernt)
-- [x] Reihenfolge (nach kleinanzeigen_id desc)
+- [x] Landing Page (public, /)
+- [x] Dashboard (6 Stats: Konten, Listings, Views, Ungelesene, Plan, Aktionen)
+- [x] Konten (Login-Button, Status-Badges, Session-Verify)
+- [x] Inserate (Filter, Sort, Bulk-Aktionen, CSV-Export, Detail-Modal, Edit-Modal, Inserat-Erstellen-Panel)
+- [x] Statistik-Charts (recharts, Views + Bookmarks über Zeit)
+- [x] Auto-Bump Scheduling (Dropdown pro Inserat, next_bump_at)
+- [x] Nachrichten (Inbox, Chat-View, Reply, Suche, 30s Polling)
+- [x] Einstellungen (Theme, Push, Email Notifications)
+- [x] Abrechnung (Stripe Checkout + Portal)
+- [x] Admin Dashboard (User-Liste, Jobs, Scraper-Health)
+- [x] Onboarding Wizard (3 Schritte nach Registration)
+- [x] Cookie-Banner + Legal Pages (Impressum, Datenschutz, AGB)
+- [x] Theme-System: Hell/Dunkel + 5 Akzentfarben, CSS Variables
+- [x] PWA: manifest.json, Icons, offline.html, Service Worker
+- [x] Push Notifications (Web Push via VAPID)
 
 ---
 
 ## 7. Roadmap (Was OFFEN ist)
 
-### Phase 1: Stabilisierung (naechste 1-2 Sessions)
+Alle Feature-Phasen sind abgeschlossen. Offene Punkte fuer Launch:
 
-| # | Task | Prioritaet | Aufwand | Abhaengigkeit |
-|---|------|-----------|---------|---------------|
-| 1 | Alembic Migration fuer bookmark_count | HOCH | 15 min | Keine |
-| 2 | Session-Auto-Refresh (stilles JWT-Refresh, Banner statt Logout) | HOCH | 3h | Keine |
-| 3 | DOM-Haertung (Fallback-Selektoren + Screenshot bei Fehler) | MITTEL | 4h | Keine |
-| 4 | Beschreibung scrapen (nur auf Detail-Seite, nicht Uebersicht) | NIEDRIG | 2h | DOM-Haertung |
-
-### Phase 2: Monetarisierung (Session 6)
+### Chef-Tasks (manuell, kein Code)
 
 | # | Task | Aufwand |
 |---|------|---------|
-| 5 | Stripe-Konto + Produkte anlegen | 1h (Chef) |
-| 6 | Backend: Checkout-Session, Webhook, Plan-Gating | 4h |
-| 7 | Frontend: Billing-Seite, Upgrade-Button, Stripe Portal | 3h |
+| 1 | Stripe: Konto + Produkte anlegen, Keys in .env, Webhook registrieren | 1h |
+| 2 | Telegram: Bot via @BotFather, Chat-ID via @userinfobot, in .env | 15min |
+| 3 | VAPID Keys generieren (`npx web-push generate-vapid-keys`), in .env | 5min |
+| 4 | Legal Pages: Impressum-Adresse eintragen, Anwalt pruefen lassen | extern |
+| 5 | Logo: Professionelles Logo statt blauem "B" (optional) | offen |
 
-**Pricing:**
-- Free: 0 EUR, 1 KA-Konto (zum Testen)
-- Starter: 9 EUR/Monat, 1 KA-Konto
-- Pro: 19 EUR/Monat, 3 KA-Konten
-- Business: 39 EUR/Monat, 10 KA-Konten
+### Technische Schulden (Code)
 
-### Phase 3: Engagement (Session 5 + 7)
-
-| # | Task | Aufwand |
-|---|------|---------|
-| 8 | Push Notifications (VAPID, Service Worker) | 4h |
-| 9 | Admin Dashboard (User-Liste, Scraper-Health, Fehlerraten) | 6h |
-| 10 | Telegram/E-Mail Alerts bei Scraper-Fehlern | 2h |
-| 11 | Theme-System — User kann Design wählen: Hell, Dunkel, und Farbthemen (Lila, Gelb, Blau, etc.). Farbschema ändert sich tatsächlich komplett (Hintergrund, Cards, Buttons, Nav, Text). Kein einfaches Umfärben sondern durchdesignte Farbwelten. Auswahl in Settings speichern. CSS Variables basiert. | 6h |
-
-### Phase 4: Production Launch (Session 8)
-
-| # | Task | Aufwand |
-|---|------|---------|
-| 12 | Production-Deploy (Hetzner oder Mac Mini bleibt) | 4h |
-| 13 | Backups (Postgres-Dump taeglich) | 1h |
-| 14 | Monitoring (Uptime Kuma) | 1h |
-| 15 | Rechtliches (Impressum, DSGVO, AGB, Cookie-Banner) | 2h (Chef + Agent) |
-| 16 | Launch-Marketing (Landing Page, Social Media) | Chef |
+| # | Task | Prioritaet |
+|---|------|-----------|
+| 6 | CREATE_LISTING Selektoren gegen Live-DOM verifizieren (Kleinanzeigen-Wizard ist komplex) | HOCH |
+| 7 | Selektor-Fallback-Warnungen im Scraper fixen (li.text-title3, [class*="title"] a) | MITTEL |
+| 8 | Beschreibung scrapen (Detail-Seite, nicht Uebersichtsseite) | NIEDRIG |
+| 9 | Taeglich VAPID Keys + Telegram testen (Push + Alert-Flow) | MITTEL |
 
 ---
 
