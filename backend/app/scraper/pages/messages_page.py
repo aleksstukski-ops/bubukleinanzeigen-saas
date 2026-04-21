@@ -1,15 +1,11 @@
 import re
 from datetime import datetime, timezone
 
-from playwright.async_api import Frame, FrameLocator, Page
+from playwright.async_api import Frame, Page
 
 from app.models.domain import Conversation
 from app.scraper.pages.base import BasePage
-from app.scraper.selectors import (
-    Selectors,
-    UrlPatterns,
-    extract_conversation_id_from_href,
-)
+from app.scraper.selectors import Selectors, UrlPatterns
 
 
 class MessagesPage(BasePage):
@@ -20,28 +16,44 @@ class MessagesPage(BasePage):
         await self.page.goto(UrlPatterns.MESSAGES_URL, wait_until="domcontentloaded")
         await self.wait_until_ready()
 
-    async def get_messages_frame(self) -> Frame | FrameLocator:
+    async def get_messages_frame(self) -> Frame | Page:
+        """Return the messages content frame, or self.page if no iframe is present.
+
+        Kleinanzeigen historically used an iframe for the messages view but has
+        migrated to a direct DOM approach.  We try the iframe selectors first;
+        if none resolves to a real frame we fall back to the page itself.
+        """
         for selector in Selectors.MESSAGES_IFRAME:
             iframe_element = await self.page.query_selector(selector)
             if iframe_element is not None:
                 frame = await iframe_element.content_frame()
                 if frame is not None:
+                    self.log.info("Found messages iframe via selector: %s", selector)
                     return frame
-        return self.page.frame_locator(Selectors.MESSAGES_IFRAME[0])
+
+        self.log.warning(
+            "No messages iframe found — falling back to direct page DOM"
+        )
+        return self.page
 
     async def scrape_conversations(self) -> list[dict]:
         frame = await self.get_messages_frame()
-        item_selector = await self._wait_for_frame_selector(frame, Selectors.CONVERSATION_LIST_ITEM)
-        items = await self._query_frame_all(frame, item_selector)
+
+        # Wait for the conversation list container or items to appear
+        container_selector = await self._wait_for_conversation_list(frame)
+        if container_selector is None:
+            self.log.warning("scrape_conversations: conversation list not found")
+            return []
+
+        # Find all conversation article elements
+        items = await frame.query_selector_all(Selectors.CONVERSATION_LIST_ITEM_ARTICLE)
+        if not items:
+            # Fallback to broader selector
+            items = await frame.query_selector_all(Selectors.CONVERSATION_LIST_ITEM_FALLBACK)
 
         conversations = []
         for item in items:
-            link_handle = await self.try_selectors(item, Selectors.CONVERSATION_LINK)
-            if link_handle is None:
-                continue
-
-            href = await link_handle.get_attribute("href")
-            conversation_id = extract_conversation_id_from_href(href)
+            conversation_id = await self._extract_conversation_id(item)
             if not conversation_id:
                 continue
 
@@ -58,6 +70,57 @@ class MessagesPage(BasePage):
             )
 
         return conversations
+
+    async def _wait_for_conversation_list(self, frame: Frame | Page, timeout: int = 20000) -> str | None:
+        """Wait for the conversation list to load. Returns matched selector or None."""
+        selectors = Selectors.CONVERSATION_CONTAINER + Selectors.CONVERSATION_LIST_ITEM_ARTICLE_SELECTOR
+        last_error = None
+        for selector in selectors:
+            try:
+                await frame.wait_for_selector(selector, timeout=timeout)
+                return selector
+            except Exception as error:
+                last_error = error
+        if last_error:
+            # Take a debug screenshot
+            try:
+                screenshot_path = "/app/storage/sessions/messages_debug.png"
+                await self.page.screenshot(path=screenshot_path, full_page=False)
+                self.log.error(
+                    "scrape_conversations: conversation list not found "
+                    "(screenshot: %s): %s",
+                    screenshot_path,
+                    last_error,
+                )
+            except Exception:
+                self.log.error("scrape_conversations: conversation list not found: %s", last_error)
+        return None
+
+    async def _extract_conversation_id(self, article) -> str | None:
+        """Extract a unique conversation ID from an article element.
+
+        Strategy 1: data-testid on the checkbox input (new SPA DOM).
+        Strategy 2: href containing conversationId (old iframe DOM).
+        """
+        # Strategy 1: checkbox data-testid (new DOM as of 2026-04)
+        checkbox = await article.query_selector('input[type="checkbox"][data-testid]')
+        if checkbox is not None:
+            testid = await checkbox.get_attribute("data-testid")
+            if testid:
+                return testid.strip()
+
+        # Strategy 2: anchor href (old DOM)
+        for selector in Selectors.CONVERSATION_LINK:
+            link = await article.query_selector(selector)
+            if link is not None:
+                href = await link.get_attribute("href")
+                if href and "conversationId=" in href:
+                    from app.scraper.selectors import extract_conversation_id_from_href
+                    cid = extract_conversation_id_from_href(href)
+                    if cid:
+                        return cid
+
+        return None
 
     @staticmethod
     def apply_conversation_snapshot(
@@ -91,28 +154,6 @@ class MessagesPage(BasePage):
             created_or_updated.append(record)
 
         return created_or_updated, seen_ids
-
-    async def _wait_for_frame_selector(self, frame: Frame | FrameLocator, selectors: list[str]) -> str:
-        last_error = None
-        for selector in selectors:
-            try:
-                if isinstance(frame, FrameLocator):
-                    await frame.locator(selector).first.wait_for(timeout=10000)
-                else:
-                    await frame.wait_for_selector(selector, timeout=10000)
-                return selector
-            except Exception as error:
-                last_error = error
-        if last_error is not None:
-            raise last_error
-        raise ValueError("No frame selector matched")
-
-    async def _query_frame_all(self, frame: Frame | FrameLocator, selector: str):
-        if isinstance(frame, FrameLocator):
-            locator = frame.locator(selector)
-            count = await locator.count()
-            return [locator.nth(index) for index in range(count)]
-        return await frame.query_selector_all(selector)
 
     @staticmethod
     def _parse_unread_count(text: str | None) -> int:

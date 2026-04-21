@@ -148,43 +148,72 @@ class Selectors:
         'iframe[src*="m-messages"]',
         'iframe[name="messages"]',
         'iframe[src*="messages"]',
+        'iframe[src*="nachrichten"]',
     ]
 
+    # Container selector to confirm the conversation list has loaded
+    CONVERSATION_CONTAINER = [
+        '[data-testid="conversation-list"]',
+        '[id="conversation-list"]',
+        '[class*="ConversationList"]',
+    ]
+
+    # Selector for individual conversation item articles (new SPA DOM, 2026-04)
+    CONVERSATION_LIST_ITEM_ARTICLE = 'article[class*="ConversationListItem"]'
+    CONVERSATION_LIST_ITEM_ARTICLE_SELECTOR = [
+        'article[class*="ConversationListItem"]',
+        '[class*="ConversationListItem"]',
+    ]
+
+    # Fallback when article selector doesn't match
+    CONVERSATION_LIST_ITEM_FALLBACK = 'a[href*="conversationId="]'
+
+    # Legacy list — kept for backwards compatibility
     CONVERSATION_LIST_ITEM = [
-        '[data-testid*="conversation"]',
+        '[data-testid="conversation-list"]',
+        'article[class*="ConversationListItem"]',
+        '[class*="ConversationListItem"]',
         '[class*="conversation-list-item"]',
         'a[href*="conversationId="]',
     ]
 
     CONVERSATION_LINK = [
         'a[href*="conversationId="]',
+        'a[href*="conversation"]',
     ]
 
     CONVERSATION_PARTNER = [
+        # New SPA DOM (2026-04): partner name is first span inside the first header
+        'header span span',
+        'header > span > span',
         '[data-testid*="partner"]',
         '[class*="partner"]',
         '[class*="name"]',
         "h2",
-        "h3",
     ]
 
     CONVERSATION_SUBJECT = [
+        # New SPA DOM: subject/listing title is in h3
+        'h3',
         '[data-testid*="subject"]',
         '[class*="subject"]',
         '[class*="title"]',
     ]
 
     CONVERSATION_PREVIEW = [
+        # New SPA DOM: preview is in .truncate.text-onSurfaceSubdued > span
+        '.truncate.text-onSurfaceSubdued span',
+        '.truncate.text-onSurfaceSubdued',
         '[data-testid*="preview"]',
         '[class*="preview"]',
         '[class*="snippet"]',
-        "p",
     ]
 
     CONVERSATION_UNREAD = [
         '[data-testid*="unread"]',
         '[class*="unread"]',
         '[class*="badge"]',
+        '[class*="UnreadBadge"]',
     ]
 
     CONVERSATION_MESSAGE_ROW = [

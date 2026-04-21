@@ -50,7 +50,16 @@ class Worker:
         finally:
             log.info("Shutting down — waiting for %s tasks", len(self._tasks))
             if self._tasks:
-                await asyncio.gather(*self._tasks, return_exceptions=True)
+                try:
+                    await asyncio.wait_for(
+                        asyncio.gather(*self._tasks, return_exceptions=True),
+                        timeout=15.0,
+                    )
+                except asyncio.TimeoutError:
+                    log.warning("Shutdown timeout — cancelling %s tasks", len(self._tasks))
+                    for task in list(self._tasks):
+                        task.cancel()
+                    await asyncio.gather(*list(self._tasks), return_exceptions=True)
             await self.session_manager.close_all()
             await queue.close()
             log.info("Worker shutdown complete")
