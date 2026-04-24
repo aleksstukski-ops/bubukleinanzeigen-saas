@@ -28,6 +28,8 @@ class Worker:
     async def run(self) -> None:
         log.info("Scraper worker started (max concurrent accounts=%s)", settings.SCRAPER_MAX_CONCURRENT_ACCOUNTS)
         Path(settings.SCRAPER_SESSION_DIR).mkdir(parents=True, exist_ok=True)
+        # Re-enqueue any pending jobs whose Redis entry was lost (e.g. after a restart)
+        await self._recover_orphaned_jobs()
         # Start auto-bump scheduler as a background task
         scheduler_task = asyncio.create_task(self._bump_scheduler_loop())
         self._tasks.add(scheduler_task)
@@ -63,6 +65,30 @@ class Worker:
             await self.session_manager.close_all()
             await queue.close()
             log.info("Worker shutdown complete")
+
+    async def _recover_orphaned_jobs(self) -> None:
+        """On startup, re-push pending jobs whose Redis entry was lost.
+
+        This handles the case where the worker restarts while jobs are in the
+        'pending' state in the DB but their Redis queue entry is gone.
+        Only jobs younger than 24 hours are recovered — older ones are stale.
+        """
+        from datetime import timedelta
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(Job).where(
+                    Job.status == JobStatus.PENDING.value,
+                    Job.created_at >= cutoff,
+                )
+            )
+            orphans = result.scalars().all()
+            if not orphans:
+                return
+            log.info("Recovering %s orphaned pending job(s) into Redis", len(orphans))
+            for job in orphans:
+                await queue.push(job.id, priority=job.priority)
+            log.info("Recovery complete")
 
     async def _bump_scheduler_loop(self) -> None:
         """Check every 5 minutes for listings with due auto-bumps and enqueue jobs."""
