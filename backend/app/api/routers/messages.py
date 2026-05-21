@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
@@ -12,6 +12,21 @@ from app.services.jobs import enqueue_job
 
 router = APIRouter(prefix="/messages", tags=["messages"])
 STALE_SECONDS = 120
+
+
+@router.get("/unread-summary")
+async def unread_summary(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Total unread message count across all of user's KA accounts. Lightweight (one COUNT)."""
+    result = await db.execute(
+        select(func.coalesce(func.sum(Conversation.unread_count), 0))
+        .join(KleinanzeigenAccount, KleinanzeigenAccount.id == Conversation.account_id)
+        .where(KleinanzeigenAccount.user_id == user.id)
+    )
+    total = int(result.scalar() or 0)
+    return {"total_unread": total}
 
 
 async def _get_conversation_for_user(

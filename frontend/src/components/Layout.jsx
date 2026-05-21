@@ -1,11 +1,13 @@
+import { useRef, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import api from "../lib/api";
 
 // All nav items shown in desktop sidebar
 const navItems = [
   { to: "/dashboard", label: "Dashboard", icon: "🏠" },
   { to: "/listings", label: "Inserate", icon: "📋" },
-  { to: "/messages", label: "Nachrichten", icon: "💬" },
+  { to: "/messages", label: "Nachrichten", icon: "💬", badgeKey: "unread" },
   { to: "/accounts", label: "Konten", icon: "⚙️" },
   { to: "/billing", label: "Abrechnung", icon: "💳" },
   { to: "/settings", label: "Einstellungen", icon: "🎨" },
@@ -16,7 +18,7 @@ const mobileNavItems = navItems.slice(0, 5);
 
 const adminNavItem = { to: "/admin", label: "Admin", icon: "🛡️" };
 
-function NavItem({ item, mobile = false }) {
+function NavItem({ item, mobile = false, badgeValue = 0 }) {
   if (item.disabled) {
     return (
       <div
@@ -34,12 +36,15 @@ function NavItem({ item, mobile = false }) {
     );
   }
 
+  const showBadge = badgeValue > 0;
+  const badgeText = badgeValue > 99 ? "99+" : String(badgeValue);
+
   return (
     <NavLink
       to={item.to}
       className={({ isActive }) =>
         [
-          "transition focus:outline-none",
+          "relative transition focus:outline-none",
           mobile
             ? `flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-2 py-2 text-xs`
             : `flex items-center gap-3 rounded-lg px-3 py-2`,
@@ -51,14 +56,56 @@ function NavItem({ item, mobile = false }) {
         fontWeight: isActive ? 600 : undefined,
       })}
     >
-      <span className={mobile ? "text-lg" : "text-xl"}>{item.icon}</span>
+      <span className={["relative", mobile ? "text-lg" : "text-xl"].join(" ")}>
+        {item.icon}
+        {showBadge && mobile && (
+          <span
+            className="absolute -right-2 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold leading-none text-white"
+            aria-label={`${badgeText} ungelesen`}
+          >
+            {badgeText}
+          </span>
+        )}
+      </span>
       <span>{item.label}</span>
+      {showBadge && !mobile && (
+        <span
+          className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-semibold text-white"
+          aria-label={`${badgeText} ungelesen`}
+        >
+          {badgeText}
+        </span>
+      )}
     </NavLink>
   );
 }
 
 export default function Layout() {
   const { user, logout, sessionExpired, dismissSessionExpired } = useAuth();
+  const [unreadTotal, setUnreadTotal] = useState(0);
+  const [pollerStarted, setPollerStarted] = useState(false);
+  const pollerRef = useRef(null);
+
+  const fetchUnread = async () => {
+    try {
+      const response = await api.get("/messages/unread-summary");
+      const total = Number(response?.data?.total_unread || 0);
+      setUnreadTotal(Number.isFinite(total) ? total : 0);
+    } catch (error) {
+      // silent — badge is non-critical, retry on next tick
+    }
+  };
+
+  if (!pollerStarted && user) {
+    setPollerStarted(true);
+    fetchUnread();
+    pollerRef.current = window.setInterval(() => {
+      if (document.hidden) return;
+      fetchUnread();
+    }, 15000);
+  }
+
+  const badges = { unread: unreadTotal };
 
   return (
     <div className="flex min-h-screen" style={{ background: "var(--bg)" }}>
@@ -84,7 +131,7 @@ export default function Layout() {
         </div>
         <nav className="flex flex-col gap-1 p-3">
           {navItems.map((item) => (
-            <NavItem key={item.to} item={item} />
+            <NavItem key={item.to} item={item} badgeValue={item.badgeKey ? badges[item.badgeKey] || 0 : 0} />
           ))}
           {user?.is_admin && <NavItem item={adminNavItem} />}
         </nav>
@@ -117,7 +164,12 @@ export default function Layout() {
       >
         <div className="mx-auto flex max-w-screen-sm items-center justify-around gap-1 px-2 py-2">
           {mobileNavItems.map((item) => (
-            <NavItem key={item.to} item={item} mobile />
+            <NavItem
+              key={item.to}
+              item={item}
+              mobile
+              badgeValue={item.badgeKey ? badges[item.badgeKey] || 0 : 0}
+            />
           ))}
         </div>
       </nav>
