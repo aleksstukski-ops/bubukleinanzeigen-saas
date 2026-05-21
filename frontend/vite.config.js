@@ -10,9 +10,9 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico"],
       manifest: {
-        name: "BubuKleinanzeigen",
-        short_name: "Bubu",
-        description: "Multi-Account Kleinanzeigen Manager",
+        name: "BubuBay",
+        short_name: "BubuBay",
+        description: "Multi-Platform Verkaufsmanager",
         theme_color: "#0f172a",
         background_color: "#ffffff",
         display: "standalone",
@@ -25,7 +25,7 @@ export default defineConfig({
     }),
   ],
   server: {
-    allowedHosts: ["bubuanzeigen.de", "www.bubuanzeigen.de"],
+    allowedHosts: ["bubuanzeigen.de", "www.bubuanzeigen.de", "bububay.de", "www.bububay.de"],
     host: "127.0.0.1",
     port: 3000,
     proxy: {

@@ -8,7 +8,7 @@ const FEATURES = [
   {
     icon: "🗂️",
     title: "Alle Konten auf einen Blick",
-    body: "Verwalte beliebig viele Kleinanzeigen-Konten in einer einzigen Oberfläche. Kein ständiges Ein- und Ausloggen mehr.",
+    body: "Verwalte beliebig viele Verkaufskonten in einer einzigen Oberfläche. Kein ständiges Ein- und Ausloggen mehr.",
   },
   {
     icon: "📬",
@@ -101,7 +101,7 @@ const FAQS = [
   },
   {
     q: "Funktioniert das mit mehreren Konten gleichzeitig?",
-    a: "Ja — genau dafür ist BubuKleinanzeigen gemacht. Je nach Plan kannst du 1 bis 10 Konten parallel verwalten.",
+    a: "Ja — genau dafür ist BubuBay gemacht. Je nach Plan kannst du 1 bis 10 Konten parallel verwalten.",
   },
   {
     q: "Was passiert wenn ich kündige?",
@@ -113,7 +113,7 @@ const FAQS = [
   },
   {
     q: "Auf welchen Geräten funktioniert die App?",
-    a: "BubuKleinanzeigen ist eine Progressive Web App (PWA) und läuft auf Desktop, Android und iOS. Auf iOS kannst du sie direkt zum Home-Screen hinzufügen.",
+    a: "BubuBay ist eine Progressive Web App (PWA) und läuft auf Desktop, Android und iOS. Auf iOS kannst du sie direkt zum Home-Screen hinzufügen.",
   },
 ];
 
@@ -240,7 +240,7 @@ export default function LandingPage() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-sm font-bold text-white">
               B
             </div>
-            <span className="text-base font-bold text-slate-900">BubuKleinanzeigen</span>
+            <span className="text-base font-bold text-slate-900">BubuBay</span>
           </div>
           <nav className="flex items-center gap-2 sm:gap-3">
             <a href="#features" className="hidden text-sm text-slate-500 hover:text-slate-900 transition-colors sm:block">
@@ -277,11 +277,11 @@ export default function LandingPage() {
               {'✨'} Jetzt kostenlos — kein Abo nötig
             </div>
             <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-5xl md:text-6xl">
-              Alle Kleinanzeigen-Konten.{" "}
+              Alle Verkaufskonten.{" "}
               <span className="text-blue-400">Ein Dashboard.</span>
             </h1>
             <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-400">
-              BubuKleinanzeigen ist die zentrale Schaltzentrale für private Händler und
+              BubuBay ist die zentrale Schaltzentrale für private Händler und
               Kleinunternehmer auf Kleinanzeigen.de. Verwalte mehrere Konten, beantworte
               Nachrichten und behalte alle Inserate im Blick — von überall, auf jedem Gerät.
             </p>
@@ -509,7 +509,7 @@ export default function LandingPage() {
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-xs font-bold text-white">
                 B
               </div>
-              <span className="text-sm font-semibold text-slate-700">BubuKleinanzeigen</span>
+              <span className="text-sm font-semibold text-slate-700">BubuBay</span>
             </div>
             <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-slate-500">
               <a href="#features" className="hover:text-slate-900 transition-colors">Features</a>
@@ -519,7 +519,7 @@ export default function LandingPage() {
               <Link to="/agb" className="hover:text-slate-900 transition-colors">AGB</Link>
             </nav>
             <p className="text-xs text-slate-400">
-              {'©'} {new Date().getFullYear()} BubuKleinanzeigen
+              {'©'} {new Date().getFullYear()} BubuBay
             </p>
           </div>
         </div>

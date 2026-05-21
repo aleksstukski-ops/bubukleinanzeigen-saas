@@ -1,7 +1,7 @@
 {
-  "name": "BubuKleinanzeigen",
-  "short_name": "BubuKA",
-  "description": "Multi-Account Kleinanzeigen Manager",
+  "name": "BubuBay",
+  "short_name": "BubuBay",
+  "description": "Multi-Platform Verkaufsmanager",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait-primary",

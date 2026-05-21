@@ -34,7 +34,7 @@ self.addEventListener("fetch", (event) => {
 
 // ── Push notification ─────────────────────────────────────────
 self.addEventListener("push", (event) => {
-  let data = { title: "BubuKleinanzeigen", body: "Neue Benachrichtigung", url: "/" };
+  let data = { title: "BubuBay", body: "Neue Benachrichtigung", url: "/" };
   try {
     if (event.data) data = { ...data, ...event.data.json() };
   } catch (_) {}

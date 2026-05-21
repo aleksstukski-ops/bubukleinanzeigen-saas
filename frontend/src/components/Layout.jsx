@@ -79,8 +79,8 @@ export default function Layout() {
         style={{ background: "var(--surface)", borderColor: "var(--border)" }}
       >
         <div className="border-b px-4 py-5" style={{ borderColor: "var(--border)" }}>
-          <div className="text-lg font-semibold" style={{ color: "var(--text)" }}>BubuKleinanzeigen</div>
-          <div className="text-xs" style={{ color: "var(--text-subtle)" }}>SaaS Control Panel</div>
+          <div className="text-lg font-semibold" style={{ color: "var(--text)" }}>BubuBay</div>
+          <div className="text-xs" style={{ color: "var(--text-subtle)" }}>Multi-Platform Verkaufsmanager</div>
         </div>
         <nav className="flex flex-col gap-1 p-3">
           {navItems.map((item) => (
@@ -97,7 +97,7 @@ export default function Layout() {
         >
           <div className="flex min-h-16 items-center justify-between gap-3 px-4 py-3 md:px-6">
             <div className="min-w-0">
-              <div className="text-base font-semibold md:hidden" style={{ color: "var(--text)" }}>BubuKleinanzeigen</div>
+              <div className="text-base font-semibold md:hidden" style={{ color: "var(--text)" }}>BubuBay</div>
               <div className="truncate text-sm" style={{ color: "var(--text-muted)" }}>{user?.email || "-"}</div>
             </div>
             <button type="button" onClick={logout} className="btn-secondary shrink-0">

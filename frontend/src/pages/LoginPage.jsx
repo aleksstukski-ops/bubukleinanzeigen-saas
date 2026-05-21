@@ -46,7 +46,7 @@ export default function LoginPage() {
           <div className="mb-6">
             <h1 className="text-2xl font-semibold text-slate-900">Anmelden</h1>
             <p className="mt-2 text-sm text-slate-500">
-              Melde dich an, um deine verbundenen Kleinanzeigen-Konten zu verwalten.
+              Melde dich an, um deine verbundenen Verkaufskonten zu verwalten.
             </p>
           </div>
 

@@ -9,14 +9,14 @@ export default function AgbPage() {
         <h2 className="text-base font-semibold" style={{ color: "var(--text)" }}>§ 1 Geltungsbereich</h2>
         <p>
           Diese AGB gelten für alle Leistungen von [Anbieter] (nachfolgend „Anbieter") gegenüber
-          Nutzern der Plattform BubuKleinanzeigen.
+          Nutzern der Plattform BubuBay.
         </p>
       </section>
 
       <section className="space-y-2 text-sm" style={{ color: "var(--text-muted)" }}>
         <h2 className="text-base font-semibold" style={{ color: "var(--text)" }}>§ 2 Leistungsbeschreibung</h2>
         <p>
-          BubuKleinanzeigen ist ein SaaS-Dienst zur Verwaltung mehrerer Kleinanzeigen.de-Konten.
+          BubuBay ist ein SaaS-Dienst zur Verwaltung mehrerer Kleinanzeigen.de-Konten.
           Der Dienst stellt Funktionen zur Übersicht, Verwaltung und Benachrichtigung bereit.
         </p>
       </section>

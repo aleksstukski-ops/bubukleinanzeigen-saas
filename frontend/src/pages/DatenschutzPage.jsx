@@ -17,7 +17,7 @@ export default function DatenschutzPage() {
         </p>
         <ul className="list-disc pl-5 space-y-1">
           <li>E-Mail-Adresse und Passwort (verschlüsselt) für die Kontoerstellung</li>
-          <li>Verschlüsselte Sitzungsdaten für verbundene Kleinanzeigen-Konten</li>
+          <li>Verschlüsselte Sitzungsdaten für verbundene Verkaufskonten</li>
           <li>Zahlungsdaten (werden direkt an Stripe übertragen, nicht bei uns gespeichert)</li>
           <li>Server-Logdaten (IP-Adresse, Zeitstempel, aufgerufene Ressourcen)</li>
         </ul>
