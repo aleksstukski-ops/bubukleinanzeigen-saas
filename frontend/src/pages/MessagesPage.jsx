@@ -119,7 +119,7 @@ export default function MessagesPage() {
         return null;
       }
       return null;
-    }, 30000);
+    }, 15000);
 
     return () => {
       if (pollingRef.current) {
@@ -212,7 +212,7 @@ export default function MessagesPage() {
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-slate-900">Nachrichten</h1>
-            <p className="mt-2 text-sm text-slate-500">Zentrale Inbox mit Polling alle 30 Sekunden.</p>
+            <p className="mt-2 text-sm text-slate-500">Zentrale Inbox mit Polling alle 15 Sekunden.</p>
           </div>
           <button type="button" onClick={loadAll} disabled={loading} className="btn-secondary">
             {loading ? "Lädt..." : "Neu laden"}
