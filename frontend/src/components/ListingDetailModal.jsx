@@ -39,6 +39,96 @@ const BUMP_INTERVALS = [
   { value: "14", label: "Alle 2 Wochen" },
 ];
 
+function InlineEditField({ value, onSave, multiline = false, placeholder = "", inputClassName = "" }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value || "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const startEdit = () => {
+    setDraft(value || "");
+    setError("");
+    setEditing(true);
+  };
+
+  const cancelEdit = () => {
+    setEditing(false);
+    setError("");
+  };
+
+  const commit = async () => {
+    const trimmed = (draft || "").trim();
+    if (trimmed === (value || "").trim()) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      await onSave(trimmed);
+      setEditing(false);
+    } catch (err) {
+      setError(err?.response?.data?.detail || err?.message || "Speichern fehlgeschlagen.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!editing) {
+    return (
+      <div className="group flex items-start gap-2">
+        <div className="min-w-0 flex-1 whitespace-pre-wrap break-words">{value || <span className="text-slate-400">{placeholder}</span>}</div>
+        <button
+          type="button"
+          onClick={startEdit}
+          className="shrink-0 rounded px-1.5 py-0.5 text-xs text-slate-500 opacity-60 hover:bg-slate-100 hover:opacity-100 group-hover:opacity-100"
+          aria-label="Bearbeiten"
+        >
+          {'✏️'}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {multiline ? (
+        <textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          className={["input w-full", inputClassName].join(" ")}
+          rows={5}
+          autoFocus
+          disabled={saving}
+        />
+      ) : (
+        <input
+          type="text"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          className={["input w-full", inputClassName].join(" ")}
+          autoFocus
+          disabled={saving}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") { e.preventDefault(); commit(); }
+            if (e.key === "Escape") { cancelEdit(); }
+          }}
+        />
+      )}
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={commit} disabled={saving} className="btn-primary py-1 px-3 text-xs">
+          {saving ? "Speichert..." : "Speichern"}
+        </button>
+        <button type="button" onClick={cancelEdit} disabled={saving} className="btn-secondary py-1 px-3 text-xs">
+          Abbrechen
+        </button>
+        {error && <span className="text-xs text-red-600">{error}</span>}
+      </div>
+    </div>
+  );
+}
+
+
 function AutoBumpSection({ listing, onUpdated }) {
   const current = listing.bump_interval_days ? String(listing.bump_interval_days) : "";
   const [selected, setSelected] = useState(current);
@@ -114,6 +204,22 @@ export default function ListingDetailModal({
 }) {
   if (!listing) return null;
 
+  const savePrice = async (newPrice) => {
+    await api.patch(`/listings/${listing.kleinanzeigen_id}`, {
+      account_id: listing.account_id,
+      price: newPrice || null,
+    });
+    if (onListingUpdated) onListingUpdated({ ...listing, price: newPrice });
+  };
+
+  const saveDescription = async (newDescription) => {
+    await api.patch(`/listings/${listing.kleinanzeigen_id}`, {
+      account_id: listing.account_id,
+      description: newDescription || null,
+    });
+    if (onListingUpdated) onListingUpdated({ ...listing, description: newDescription });
+  };
+
   const footer = (
     <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
       <button type="button" onClick={onEdit} disabled={isProcessing || deleting} className="btn-secondary">Bearbeiten</button>
@@ -140,7 +246,17 @@ export default function ListingDetailModal({
               <div className="min-w-0">
                 <div className="text-xs text-slate-500">{"📋"} ID: {listing.kleinanzeigen_id}</div>
                 <h3 className="mt-2 text-lg font-semibold text-slate-900">{listing.title}</h3>
-                <div className="mt-2 text-base font-semibold">{"💰"} {listing.price || "Kein Preis"}</div>
+                <div className="mt-2 flex items-center gap-2 text-base font-semibold">
+                  <span>{'💰'}</span>
+                  <div className="min-w-0 flex-1">
+                    <InlineEditField
+                      value={listing.price || ""}
+                      onSave={savePrice}
+                      placeholder="Kein Preis"
+                      inputClassName="text-base font-semibold"
+                    />
+                  </div>
+                </div>
               </div>
               <span className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${getStatusClass(listing, isProcessing)}`}>
                 {getStatusLabel(listing, isProcessing)}
@@ -181,7 +297,14 @@ export default function ListingDetailModal({
 
         <div className="rounded-lg border border-slate-200 p-3">
           <div className="text-xs text-slate-500">Beschreibung</div>
-          <div className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{listing.description || "Keine Beschreibung."}</div>
+          <div className="mt-2 text-sm text-slate-700">
+            <InlineEditField
+              value={listing.description || ""}
+              onSave={saveDescription}
+              placeholder="Keine Beschreibung."
+              multiline
+            />
+          </div>
         </div>
 
         {listing.url ? (
