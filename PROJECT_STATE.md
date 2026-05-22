@@ -1,11 +1,24 @@
 # Project State
 
-Zuletzt aktualisiert: 2026-04-21 (Session 3)
+Zuletzt aktualisiert: 2026-05-22 (Session 5)
 
 ## Aktueller Stand
 
 Phase: **ALLE FEATURES FERTIG — Bereit fuer Launch**
 Naechster Schritt: Chef-Tasks (Stripe, Telegram, VAPID Keys) → Live-Test → Launch.
+
+## Session 5 (2026-05-22)
+
+- Aufgabe 5: Inline-Beschreibung-Edit jetzt End-to-End. ListingUpdateIn.title
+  optional, Backend fuellt fehlende Felder aus DB-Record vor enqueue. Patch ohne
+  title schlaegt nicht mehr an Pydantic fehl.
+- Aufgabe 6+7: Bulk-Aktionen und Multi-Account-Nachrichten bereits live —
+  /listings/bulk-action Endpoint, Checkboxen + Bulk-Toolbar im Frontend,
+  Account-Filter im Postfach + Konto-Badge in Inbox und ConversationView.
+- Aufgabe 8: SCRAPE_LISTING_DETAIL Job-Typ. ListingDetailPage scrapt
+  description via VIP_DESCRIPTION (#viewad-description-text Cascade).
+  _handle_scrape_listings enqueued bis zu 5 Detail-Jobs pro Zyklus fuer
+  Listings ohne Beschreibung (priority 6, kein Dedup).
 
 ## Was funktioniert
 
