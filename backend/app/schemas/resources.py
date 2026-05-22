@@ -129,6 +129,29 @@ class CreateListingIn(BaseModel):
     location: str | None = Field(default=None, max_length=128)
 
 
+class ListingTemplateIn(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    title: str | None = Field(default=None, max_length=500)
+    description: str | None = Field(default=None, max_length=10000)
+    price: str | None = Field(default=None, max_length=64)
+    category_id: str | None = Field(default=None, max_length=64)
+    location: str | None = Field(default=None, max_length=255)
+
+
+class ListingTemplateOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    title: str | None
+    description: str | None
+    price: str | None
+    category_id: str | None
+    location: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
 class JobOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

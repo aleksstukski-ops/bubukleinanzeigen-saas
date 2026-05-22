@@ -3,6 +3,7 @@ from app.models.kleinanzeigen_account import KleinanzeigenAccount, AccountStatus
 from app.models.domain import Listing, ListingStat, Conversation, Message
 from app.models.job import Job, JobStatus, JobType
 from app.models.push_subscription import PushSubscription
+from app.models.listing_template import ListingTemplate
 
 __all__ = [
     "User", "SubscriptionPlan", "PLAN_LIMITS",
@@ -10,4 +11,5 @@ __all__ = [
     "Listing", "ListingStat", "Conversation", "Message",
     "Job", "JobStatus", "JobType",
     "PushSubscription",
+    "ListingTemplate",
 ]
