@@ -103,24 +103,28 @@ const PLANS = [
 
 const FAQS = [
   {
-    q: "Muss ich mein Kleinanzeigen-Passwort angeben?",
-    a: "Nein. Der Login läuft über den offiziellen Kleinanzeigen-Login-Flow in einem sichtbaren Browser auf deinem Server. Wir sehen dein Passwort nie.",
+    q: "Welche Plattformen werden unterstuetzt?",
+    a: "Aktuell ist Kleinanzeigen.de voll unterstuetzt. eBay und Vinted folgen als naechstes — du wirst benachrichtigt sobald neue Kanaele live gehen.",
+  },
+  {
+    q: "Muss ich mein Passwort angeben?",
+    a: "Nein. Der Login laeuft ueber den offiziellen Login-Flow der jeweiligen Plattform in einem sichtbaren Browser. Wir sehen dein Passwort nie.",
   },
   {
     q: "Funktioniert das mit mehreren Konten gleichzeitig?",
-    a: "Ja — genau dafür ist BubuBay gemacht. Je nach Plan kannst du 1 bis 10 Konten parallel verwalten.",
+    a: "Ja — genau dafuer ist BubuBay gemacht. Je nach Plan kannst du 1 bis 10 Konten parallel verwalten, auch ueber verschiedene Plattformen hinweg.",
   },
   {
-    q: "Was passiert wenn ich kündige?",
-    a: "Du kannst monatlich kündigen, ohne Mindestlaufzeit. Nach der Kündigung behältst du deinen Zugang bis zum Ende des bezahlten Zeitraums.",
+    q: "Was passiert wenn ich kuendige?",
+    a: "Du kannst monatlich kuendigen, ohne Mindestlaufzeit. Nach der Kuendigung behaeltst du deinen Zugang bis zum Ende des bezahlten Zeitraums.",
   },
   {
     q: "Ist der Free-Plan dauerhaft kostenlos?",
-    a: "Ja. Mit dem Free-Plan kannst du 1 Kleinanzeigen-Konto dauerhaft kostenlos verwalten — ohne Zeitlimit.",
+    a: "Ja. Mit dem Free-Plan kannst du 1 Konto dauerhaft kostenlos verwalten — ohne Zeitlimit.",
   },
   {
-    q: "Auf welchen Geräten funktioniert die App?",
-    a: "BubuBay ist eine Progressive Web App (PWA) und läuft auf Desktop, Android und iOS. Auf iOS kannst du sie direkt zum Home-Screen hinzufügen.",
+    q: "Auf welchen Geraeten funktioniert die App?",
+    a: "BubuBay ist eine Progressive Web App (PWA) und laeuft auf Desktop, Android und iOS. Auf iOS kannst du sie direkt zum Home-Screen hinzufuegen.",
   },
 ];
 
@@ -171,7 +175,7 @@ function ProductMockup() {
             <div className="h-3 w-28 rounded bg-slate-600" />
             <div className="mt-1 h-2 w-20 rounded bg-slate-700" />
           </div>
-          {["Dashboard", "Inserate", "Nachrichten", "Konten"].map((label) => (
+          {["Dashboard", "Inserate", "Nachrichten", "Statistiken"].map((label) => (
             <div
               key={label}
               className="mb-1 flex items-center gap-2 rounded-lg px-2 py-2"
