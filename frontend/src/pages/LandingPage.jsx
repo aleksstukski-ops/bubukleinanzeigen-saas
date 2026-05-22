@@ -4,21 +4,28 @@ import { useAuth } from "../hooks/useAuth";
 
 // ── Data ────────────────────────────────────────────────────────
 
+const CHANNELS = [
+  { icon: "🟢", name: "Kleinanzeigen.de", status: "Live" },
+  { icon: "🔵", name: "eBay", status: "Bald" },
+  { icon: "🟠", name: "Vinted", status: "Bald" },
+  { icon: "🔴", name: "Etsy", status: "Geplant" },
+];
+
 const FEATURES = [
   {
     icon: "🗂️",
     title: "Alle Konten auf einen Blick",
-    body: "Verwalte beliebig viele Verkaufskonten in einer einzigen Oberfläche. Kein ständiges Ein- und Ausloggen mehr.",
+    body: "Verwalte beliebig viele Verkaufskonten in einer einzigen Oberflaeche — ueber mehrere Marktplaetze hinweg.",
   },
   {
     icon: "📬",
     title: "Zentrale Nachrichten-Inbox",
-    body: "Alle Käufer-Nachrichten aus allen Konten in einer gemeinsamen Inbox. Direkt antworten, als gelesen markieren.",
+    body: "Alle Kaeufer-Nachrichten aus allen Konten und Plattformen in einer gemeinsamen Inbox. Direkt antworten, nichts verpassen.",
   },
   {
     icon: "📊",
     title: "Inserat-Statistiken",
-    body: "Views, Merklisten-Einträge und Preise auf einen Blick. Erkenne welche Inserate am besten laufen.",
+    body: "Views, Merklisten-Eintraege und Preise auf einen Blick. Erkenne welche Inserate am besten laufen.",
   },
   {
     icon: "🔔",
@@ -28,12 +35,12 @@ const FEATURES = [
   {
     icon: "⚡",
     title: "Bulk-Aktionen",
-    body: "Inserate hochschieben, bearbeiten oder löschen mit wenigen Klicks. Spart Stunden manueller Arbeit pro Woche.",
+    body: "Inserate hochschieben, bearbeiten oder loeschen mit wenigen Klicks. Spart Stunden manueller Arbeit pro Woche.",
   },
   {
     icon: "🔒",
-    title: "Sicher & verschlüsselt",
-    body: "Session-Daten werden mit Fernet-Verschlüsselung gespeichert. Deine Zugangsdaten verlassen niemals unsere Server.",
+    title: "Sicher & verschluesselt",
+    body: "Session-Daten werden verschluesselt gespeichert. Deine Zugangsdaten verlassen niemals unsere Server.",
   },
 ];
 
@@ -45,13 +52,13 @@ const STEPS = [
   },
   {
     num: "2",
-    title: "Kleinanzeigen-Konto verbinden",
-    body: "Starte den sicheren Login-Flow. Dein Konto ist in unter 2 Minuten verbunden.",
+    title: "Marktplatz-Konto verbinden",
+    body: "Starte mit Kleinanzeigen.de — sicherer Login-Flow, in unter 2 Minuten verbunden.",
   },
   {
     num: "3",
-    title: "Alle Konten zentral steuern",
-    body: "Inserate, Nachrichten und Statistiken — alles an einem Ort, jederzeit.",
+    title: "Alle Kanaele zentral steuern",
+    body: "Inserate, Nachrichten und Statistiken ueber alle Plattformen — an einem Ort.",
   },
 ];
 
@@ -274,17 +281,31 @@ export default function LandingPage() {
         <div className="relative mx-auto max-w-6xl">
           <div className="mx-auto max-w-3xl text-center">
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-blue-800 bg-blue-950 px-4 py-1.5 text-xs font-medium text-blue-300">
-              {'✨'} Jetzt kostenlos — kein Abo nötig
+              {'🟢'} Kleinanzeigen.de live — weitere Plattformen folgen
             </div>
             <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-5xl md:text-6xl">
-              Alle Verkaufskonten.{" "}
+              Alle Marktplaetze.{" "}
               <span className="text-blue-400">Ein Dashboard.</span>
             </h1>
             <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-400">
-              BubuBay ist die zentrale Schaltzentrale für private Händler und
-              Kleinunternehmer auf Kleinanzeigen.de. Verwalte mehrere Konten, beantworte
-              Nachrichten und behalte alle Inserate im Blick — von überall, auf jedem Gerät.
+              BubuBay ist die zentrale Schaltzentrale fuer private Haendler und
+              Kleinunternehmer. Starte mit Kleinanzeigen.de — bald auch eBay, Vinted und mehr.
+              Alle Konten, Nachrichten und Inserate an einem Ort.
             </p>
+            {/* Channel badges */}
+            <div className="mx-auto mt-6 flex max-w-md flex-wrap items-center justify-center gap-3">
+              {CHANNELS.map((ch) => (
+                <span
+                  key={ch.name}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-300"
+                >
+                  {ch.icon}{" "}{ch.name}
+                  <span className={ch.status === "Live" ? "text-emerald-400" : "text-slate-500"}>
+                    {"·"} {ch.status}
+                  </span>
+                </span>
+              ))}
+            </div>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
               <Link
                 to="/register"
@@ -326,7 +347,7 @@ export default function LandingPage() {
           <div className="mx-auto mb-12 max-w-2xl text-center">
             <p className="mb-3 text-sm font-semibold uppercase tracking-widest text-blue-600">Features</p>
             <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
-              Alles was du für professionelles Kleinanzeigen-Management brauchst
+              Alles was du fuer professionelles Marktplatz-Management brauchst
             </h2>
           </div>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">

@@ -69,6 +69,11 @@ export default function ListingsPage() {
   const [createForm, setCreateForm] = useState({ title: "", description: "", price: "", category_id: "", location: "", account_id: "" });
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState("");
+  const [templates, setTemplates] = useState([]);
+  const [templatesLoaded, setTemplatesLoaded] = useState(false);
+  const [templatesPanelOpen, setTemplatesPanelOpen] = useState(false);
+  const [templateName, setTemplateName] = useState("");
+  const [templateSaving, setTemplateSaving] = useState(false);
 
   const handleExportCsv = () => {
     if (filteredListings.length === 0) return;
@@ -242,11 +247,68 @@ export default function ListingsPage() {
     }
   };
 
+  const loadTemplates = async () => {
+    try {
+      const res = await api.get("/templates");
+      setTemplates(res.data || []);
+    } catch (error) {
+      // Non-fatal — user can still create without templates
+    }
+  };
+
   const openCreateModal = () => {
     const defaultAccountId = accounts.length > 0 ? String(accounts[0].id) : "";
     setCreateForm({ title: "", description: "", price: "", category_id: "", location: "", account_id: defaultAccountId });
     setCreateError("");
     setCreateOpen(true);
+    if (!templatesLoaded) {
+      setTemplatesLoaded(true);
+      loadTemplates();
+    }
+  };
+
+  const applyTemplate = (template) => {
+    setCreateForm((f) => ({
+      ...f,
+      title: template.title || "",
+      description: template.description || "",
+      price: template.price || "",
+      category_id: template.category_id || "",
+      location: template.location || "",
+    }));
+  };
+
+  const saveAsTemplate = async () => {
+    const name = templateName.trim();
+    if (!name) { setCreateError("Vorlagen-Name eingeben."); return; }
+    setTemplateSaving(true);
+    setCreateError("");
+    try {
+      const res = await api.post("/templates", {
+        name,
+        title: createForm.title.trim() || null,
+        description: createForm.description.trim() || null,
+        price: createForm.price.trim() || null,
+        category_id: createForm.category_id.trim() || null,
+        location: createForm.location.trim() || null,
+      });
+      setTemplates((prev) => [res.data, ...prev]);
+      setTemplateName("");
+    } catch (error) {
+      setCreateError(getErrorMessage(error));
+    } finally {
+      setTemplateSaving(false);
+    }
+  };
+
+  const deleteTemplate = async (id) => {
+    if (!window.confirm("Vorlage wirklich loeschen?")) return;
+    try {
+      await api.delete(`/templates/${id}`);
+      setTemplates((prev) => prev.filter((t) => t.id !== id));
+    } catch (error) {
+      setCreateError(getErrorMessage(error));
+    }
   };
 
   const handleCreateSubmit = async (e) => {
@@ -583,6 +645,77 @@ export default function ListingsPage() {
             <button type="button" className="text-2xl leading-none text-slate-400 hover:text-slate-700" onClick={() => setCreateOpen(false)}>{"×"}</button>
           </div>
           <form onSubmit={handleCreateSubmit} className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-4">
+            {/* Template controls */}
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  className="input flex-1 py-1.5 text-sm"
+                  onChange={(e) => {
+                    const tid = Number(e.target.value);
+                    const t = templates.find((x) => x.id === tid);
+                    if (t) applyTemplate(t);
+                    e.target.value = "";
+                  }}
+                  defaultValue=""
+                >
+                  <option value="">{"📋"} Vorlage anwenden...</option>
+                  {templates.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="btn-secondary py-1.5 px-3 text-sm"
+                  onClick={() => setTemplatesPanelOpen((v) => !v)}
+                >
+                  {templatesPanelOpen ? "Schliessen" : "Verwalten"}
+                </button>
+              </div>
+              {templatesPanelOpen && (
+                <div className="mt-3 space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="text"
+                      value={templateName}
+                      onChange={(e) => setTemplateName(e.target.value)}
+                      placeholder="Vorlagen-Name"
+                      className="input flex-1 py-1.5 text-sm"
+                      disabled={templateSaving}
+                    />
+                    <button
+                      type="button"
+                      className="btn-primary py-1.5 px-3 text-sm"
+                      disabled={templateSaving || !templateName.trim()}
+                      onClick={saveAsTemplate}
+                    >
+                      {templateSaving ? "..." : "Aktuelles speichern"}
+                    </button>
+                  </div>
+                  {templates.length > 0 ? (
+                    <ul className="divide-y divide-slate-200 rounded border border-slate-200 bg-white">
+                      {templates.map((t) => (
+                        <li key={t.id} className="flex items-center justify-between px-3 py-2 text-sm">
+                          <span className="truncate">{t.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => deleteTemplate(t.id)}
+                            className="text-xs text-red-600 hover:text-red-800"
+                          >
+                            L{"ö"}schen
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-xs text-slate-500">Noch keine Vorlagen.</p>
+                  )}
+                  <p className="text-xs text-slate-500">
+                    Tipp: Platzhalter im Titel/Beschreibung sind reiner Text und werden nicht ersetzt. Beispiel: <code>{"{Marke}"}</code> bleibt drin, bis du es ausf{"ü"}llst.
+                  </p>
+                </div>
+              )}
+            </div>
+
             <p className="text-sm text-slate-500">
               {"⚠️"} Kleinanzeigen nutzt einen mehrstufigen Kategorie-Assistenten. Ohne <code>category_id</code> stoppt das Formular bei der Kategorie-Auswahl. Am besten zuerst manuell eine Kategorie-ID ermitteln.
             </p>

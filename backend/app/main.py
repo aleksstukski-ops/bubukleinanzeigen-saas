@@ -9,7 +9,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
 
 from app.core.config import settings
-from app.api.routers import admin, auth, billing, kleinanzeigen_accounts, jobs, listings, messages, push
+from app.api.routers import admin, auth, billing, kleinanzeigen_accounts, jobs, listings, messages, push, templates
 
 log = logging.getLogger("api")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -53,6 +53,7 @@ app.include_router(kleinanzeigen_accounts.router, prefix="/api")
 app.include_router(jobs.router, prefix="/api")
 app.include_router(listings.router, prefix="/api")
 app.include_router(messages.router, prefix="/api")
+app.include_router(templates.router, prefix="/api")
 
 
 @app.get("/api/health", tags=["health"])
