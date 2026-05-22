@@ -11,12 +11,14 @@ from app.services.push import send_push_to_user
 from app.models.domain import Conversation, Listing, Message
 from app.scraper.pages.conversation_page import ConversationPage
 from app.scraper.pages.edit_listing_page import EditListingPage
+from app.scraper.pages.listing_detail_page import ListingDetailPage
 from app.scraper.pages.listings_page import ListingsPage
 from app.scraper.pages.login_page import LoginPage
 from app.scraper.pages.messages_page import MessagesPage
 from app.scraper.selectors import Selectors, UrlPatterns
 from app.scraper.session_manager import SessionManager
 from app.services.alerts import send_alert
+from app.services.jobs import enqueue_job
 from app.services.sessions import get_account_storage_state, set_account_storage_state
 
 log = logging.getLogger("scraper.dispatcher")
@@ -309,7 +311,65 @@ async def _handle_scrape_listings(job: Job, db: AsyncSession, session_manager: S
         account.last_scraped_at = now
         await db.commit()
 
+        # Auto-trigger detail scrape for listings that have a URL but no description yet.
+        # Cap per cycle so a fresh account does not flood the queue.
+        needs_detail = [
+            r for r in created_or_updated
+            if r.is_active and r.url and not (r.description and r.description.strip())
+        ][:5]
+        for record in needs_detail:
+            await enqueue_job(
+                db,
+                JobType.SCRAPE_LISTING_DETAIL,
+                account_id=account.id,
+                payload={"listing_id": record.kleinanzeigen_id, "url": record.url},
+                priority=6,
+                deduplicate=False,
+            )
+
         return {"count": len(scraped_items), "valid": True}
+
+
+async def _handle_scrape_listing_detail(job: Job, db: AsyncSession, session_manager: SessionManager) -> dict[str, Any]:
+    listing_id = _require_listing_id(job)
+    account = await _get_account(db, job.account_id)
+    listing = await _get_listing(db, account_id=account.id, listing_id=listing_id)
+
+    url = str(job.payload.get("url") or listing.url or "").strip()
+    if not url:
+        raise JobError("Job payload is missing url for listing detail", recoverable=False)
+
+    if not account.session_encrypted:
+        raise JobError("Missing encrypted session", recoverable=False)
+    storage_state = get_account_storage_state(account)
+
+    async with session_manager.lock(account.id):
+        page = await session_manager.get_page(
+            account.id,
+            headless=True,
+            storage_state=storage_state,
+            force_new=True,
+        )
+
+        detail_page = ListingDetailPage(page)
+        await detail_page.open(url)
+
+        description = await detail_page.extract_description()
+
+        now = datetime.now(timezone.utc)
+        if description:
+            listing.description = description
+        listing.last_scraped_at = now
+        db.add(listing)
+
+        account.last_scraped_at = now
+        await db.commit()
+
+        return {
+            "listing_id": listing_id,
+            "description_length": len(description) if description else 0,
+            "valid": True,
+        }
 
 
 async def _handle_scrape_messages(job: Job, db: AsyncSession, session_manager: SessionManager) -> dict[str, Any]:
@@ -714,6 +774,7 @@ async def _handle_bump_listing(job: Job, db: AsyncSession, session_manager: Sess
 HANDLERS = {
     JobType.START_LOGIN.value: _handle_start_login,
     JobType.SCRAPE_LISTINGS.value: _handle_scrape_listings,
+    JobType.SCRAPE_LISTING_DETAIL.value: _handle_scrape_listing_detail,
     JobType.SCRAPE_MESSAGES.value: _handle_scrape_messages,
     JobType.SCRAPE_CONVERSATION.value: _handle_scrape_conversation,
     JobType.SEND_MESSAGE.value: _handle_send_message,

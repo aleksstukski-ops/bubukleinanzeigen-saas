@@ -19,6 +19,7 @@ class JobStatus(str, Enum):
 class JobType(str, Enum):
     START_LOGIN = "start_login"
     SCRAPE_LISTINGS = "scrape_listings"
+    SCRAPE_LISTING_DETAIL = "scrape_listing_detail"
     SCRAPE_MESSAGES = "scrape_messages"
     SCRAPE_CONVERSATION = "scrape_conversation"
     SEND_MESSAGE = "send_message"

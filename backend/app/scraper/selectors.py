@@ -54,6 +54,15 @@ class Selectors:
         'a[href*="/m-meine-anzeigen"]',
     ]
 
+    # VIP listing detail page (s-anzeige/...) — long description block
+    VIP_DESCRIPTION = [
+        '#viewad-description-text',
+        'p#viewad-description-text',
+        '[data-testid="viewad-description-text"]',
+        '#viewad-description',
+        '.ad-description--text',
+    ]
+
     LOGIN_REQUIRED_MARKER = [
         "form#login-form",
         'input[name="loginMail"]',
