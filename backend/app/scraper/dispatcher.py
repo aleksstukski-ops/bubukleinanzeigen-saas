@@ -312,11 +312,12 @@ async def _handle_scrape_listings(job: Job, db: AsyncSession, session_manager: S
         await db.commit()
 
         # Auto-trigger detail scrape for listings that have a URL but no description yet.
-        # Cap per cycle so a fresh account does not flood the queue.
+        # Cap per cycle so a fresh account does not flood the queue; 20 strikes a
+        # balance between fast backfill on new accounts and queue pressure.
         needs_detail = [
             r for r in created_or_updated
             if r.is_active and r.url and not (r.description and r.description.strip())
-        ][:5]
+        ][:20]
         for record in needs_detail:
             await enqueue_job(
                 db,
