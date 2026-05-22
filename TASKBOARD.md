@@ -26,9 +26,9 @@ Letzte Aktualisierung: 2026-05-22
 
 ## IN_PROGRESS
 <!-- - [ ] **TASK-ID**: Beschreibung | Agent: [codex/gpt/opus] | Seit: YYYY-MM-DD | Branch: xxx -->
-- [ ] **LISTING-03**: Vorlagen-System (Templates mit Platzhaltern) | Agent: codex | Seit: 2026-05-22 | Branch: main
 
 ## DONE
+- [x] **LISTING-03**: Vorlagen-System (Templates mit Platzhaltern) | Agent: codex | 2026-05-22 | Commit: 449a252
 - [x] **LISTING-04**: Bulk-Description-Scrape-Button | Agent: codex | 2026-05-22 | Commit: ecaba58
 - [x] **LISTING-01**: Bulk-Preis (absolut + prozentual) | Agent: codex | 2026-05-22 | Commit: a19cd64
 - [x] **MSG-02**: Push bei steigendem unread_count | Agent: codex | 2026-05-22 | Commit: d07013f
