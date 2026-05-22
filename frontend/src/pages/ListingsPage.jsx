@@ -62,6 +62,9 @@ export default function ListingsPage() {
   const [processingById, setProcessingById] = useState({});
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [priceChangeOpen, setPriceChangeOpen] = useState(false);
+  const [priceMode, setPriceMode] = useState("percent_decrease");
+  const [priceValue, setPriceValue] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState({ title: "", description: "", price: "", category_id: "", location: "", account_id: "" });
   const [createLoading, setCreateLoading] = useState(false);
@@ -270,7 +273,7 @@ export default function ListingsPage() {
     }
   };
 
-  const handleBulkAction = async (action) => {
+  const handleBulkAction = async (action, extra = {}) => {
     if (selectedIds.size === 0) return;
     setBulkLoading(true);
     setPageError("");
@@ -279,15 +282,32 @@ export default function ListingsPage() {
       const res = await api.post("/listings/bulk-action", {
         listing_ids: [...selectedIds],
         action,
+        ...extra,
       });
-      setPageNotice(`${res.data.length} Job(s) gestartet.`);
+      const count = res.data.length;
+      const skipped = selectedIds.size - count;
+      const note = skipped > 0
+        ? `${count} Job(s) gestartet (${skipped} uebersprungen).`
+        : `${count} Job(s) gestartet.`;
+      setPageNotice(note);
       setSelectedIds(new Set());
+      setPriceChangeOpen(false);
+      setPriceValue("");
       await loadListings();
     } catch (error) {
       setPageError(getErrorMessage(error));
     } finally {
       setBulkLoading(false);
     }
+  };
+
+  const handleBulkPriceChange = () => {
+    const numeric = Number(String(priceValue).replace(",", "."));
+    if (!Number.isFinite(numeric) || numeric <= 0) {
+      setPageError("Preiswert muss eine positive Zahl sein.");
+      return;
+    }
+    handleBulkAction("price_change", { price_mode: priceMode, price_value: numeric });
   };
 
   return (
@@ -358,31 +378,76 @@ export default function ListingsPage() {
 
           {/* Bulk action bar */}
           {selectedIds.size > 0 && (
-            <div className="mt-4 flex flex-wrap items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
-              <span className="text-sm font-medium text-blue-700">{selectedIds.size} ausgewahlt</span>
-              <button
-                type="button"
-                className="btn-primary py-1 px-3 text-sm"
-                disabled={bulkLoading}
-                onClick={() => handleBulkAction("bump")}
-              >
-                {bulkLoading ? "..." : "Alle hochschieben"}
-              </button>
-              <button
-                type="button"
-                className="btn-danger py-1 px-3 text-sm"
-                disabled={bulkLoading}
-                onClick={() => handleBulkAction("delete")}
-              >
-                {bulkLoading ? "..." : "Alle loschen"}
-              </button>
-              <button
-                type="button"
-                className="ml-auto text-sm text-blue-600 hover:text-blue-800"
-                onClick={() => setSelectedIds(new Set())}
-              >
-                Abwahlen
-              </button>
+            <div className="mt-4 space-y-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-medium text-blue-700">{selectedIds.size} ausgew{"ä"}hlt</span>
+                <button
+                  type="button"
+                  className="btn-primary py-1 px-3 text-sm"
+                  disabled={bulkLoading}
+                  onClick={() => handleBulkAction("bump")}
+                >
+                  {bulkLoading ? "..." : "Alle hochschieben"}
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary py-1 px-3 text-sm"
+                  disabled={bulkLoading}
+                  onClick={() => setPriceChangeOpen((v) => !v)}
+                >
+                  {"💰"} Preis anpassen
+                </button>
+                <button
+                  type="button"
+                  className="btn-danger py-1 px-3 text-sm"
+                  disabled={bulkLoading}
+                  onClick={() => handleBulkAction("delete")}
+                >
+                  {bulkLoading ? "..." : "Alle löschen"}
+                </button>
+                <button
+                  type="button"
+                  className="ml-auto text-sm text-blue-600 hover:text-blue-800"
+                  onClick={() => { setSelectedIds(new Set()); setPriceChangeOpen(false); }}
+                >
+                  Abw{"ä"}hlen
+                </button>
+              </div>
+              {priceChangeOpen && (
+                <div className="grid gap-2 rounded-lg bg-white p-3 sm:grid-cols-[1fr_140px_auto]">
+                  <select
+                    value={priceMode}
+                    onChange={(e) => setPriceMode(e.target.value)}
+                    className="input py-1.5 text-sm"
+                    disabled={bulkLoading}
+                  >
+                    <option value="percent_decrease">Prozent reduzieren (%)</option>
+                    <option value="percent_increase">Prozent erh{"ö"}hen (%)</option>
+                    <option value="absolute">Auf festen Preis setzen (EUR)</option>
+                  </select>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={priceValue}
+                    onChange={(e) => setPriceValue(e.target.value)}
+                    placeholder={priceMode === "absolute" ? "z.B. 99" : "z.B. 10"}
+                    className="input py-1.5 text-sm"
+                    disabled={bulkLoading}
+                  />
+                  <button
+                    type="button"
+                    className="btn-primary py-1.5 px-3 text-sm"
+                    disabled={bulkLoading || !priceValue}
+                    onClick={handleBulkPriceChange}
+                  >
+                    {bulkLoading ? "..." : "Anwenden"}
+                  </button>
+                  <p className="text-xs text-slate-500 sm:col-span-3">
+                    Inserate ohne Zahlenpreis (VB, Zu verschenken) werden {"ü"}bersprungen.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 

@@ -62,7 +62,10 @@ class ListingStatOut(BaseModel):
 
 class BulkActionIn(BaseModel):
     listing_ids: list[str] = Field(min_length=1, max_length=100)
-    action: str  # "bump" or "delete"
+    action: str  # "bump", "delete", "price_change", "scrape_description"
+    # Only used when action == "price_change":
+    price_mode: str | None = None  # "absolute" | "percent_increase" | "percent_decrease"
+    price_value: float | None = Field(default=None, gt=0)
 
 
 class ListingUpdateIn(BaseModel):

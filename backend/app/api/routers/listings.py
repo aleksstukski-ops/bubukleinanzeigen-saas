@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -134,15 +135,68 @@ async def create_listing(
     return job
 
 
+_PRICE_NUMBER_RE = re.compile(r"(\d+(?:[\.,]\d+)?)")
+
+
+def _parse_listing_price(raw: str | None) -> float | None:
+    if not raw:
+        return None
+    match = _PRICE_NUMBER_RE.search(raw.replace(".", "").replace(",", "."))
+    if match is None:
+        return None
+    try:
+        return float(match.group(1))
+    except ValueError:
+        return None
+
+
+def _format_price(value: float) -> str:
+    rounded = round(value)
+    if rounded < 1:
+        rounded = 1
+    return f"{int(rounded)} EUR"
+
+
+def _compute_new_price(current: str | None, mode: str, value: float) -> str | None:
+    base = _parse_listing_price(current)
+    if base is None:
+        # VB / Zu verschenken / no parsable number — skip
+        return None
+    if mode == "absolute":
+        new_value = value
+    elif mode == "percent_increase":
+        new_value = base * (1 + value / 100)
+    elif mode == "percent_decrease":
+        new_value = base * (1 - value / 100)
+    else:
+        return None
+    if new_value <= 0:
+        return None
+    return _format_price(new_value)
+
+
 @router.post("/bulk-action", response_model=list[JobOut])
 async def bulk_action(
     payload: BulkActionIn,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Enqueue bump or delete jobs for a list of listing IDs."""
-    if payload.action not in ("bump", "delete"):
-        raise HTTPException(status_code=400, detail="action must be 'bump' or 'delete'")
+    """Enqueue bulk jobs (bump / delete / price_change / scrape_description)."""
+    allowed_actions = ("bump", "delete", "price_change", "scrape_description")
+    if payload.action not in allowed_actions:
+        raise HTTPException(
+            status_code=400,
+            detail=f"action must be one of {allowed_actions}",
+        )
+
+    if payload.action == "price_change":
+        if payload.price_mode not in ("absolute", "percent_increase", "percent_decrease"):
+            raise HTTPException(
+                status_code=400,
+                detail="price_mode must be absolute/percent_increase/percent_decrease",
+            )
+        if payload.price_value is None:
+            raise HTTPException(status_code=400, detail="price_value is required for price_change")
 
     # Fetch all matching listings that belong to this user
     result = await db.execute(
@@ -156,16 +210,50 @@ async def bulk_action(
     )
     listings = result.scalars().all()
 
-    job_type = JobType.BUMP_LISTING if payload.action == "bump" else JobType.DELETE_LISTING
-    jobs = []
+    jobs: list = []
     for listing in listings:
-        job = await enqueue_job(
-            db,
-            job_type,
-            account_id=listing.account_id,
-            payload={"listing_id": listing.kleinanzeigen_id},
-            priority=3,
-        )
+        if payload.action == "bump":
+            job = await enqueue_job(
+                db, JobType.BUMP_LISTING,
+                account_id=listing.account_id,
+                payload={"listing_id": listing.kleinanzeigen_id},
+                priority=3,
+            )
+        elif payload.action == "delete":
+            job = await enqueue_job(
+                db, JobType.DELETE_LISTING,
+                account_id=listing.account_id,
+                payload={"listing_id": listing.kleinanzeigen_id},
+                priority=3,
+            )
+        elif payload.action == "scrape_description":
+            if not listing.url:
+                continue
+            job = await enqueue_job(
+                db, JobType.SCRAPE_LISTING_DETAIL,
+                account_id=listing.account_id,
+                payload={"listing_id": listing.kleinanzeigen_id, "url": listing.url},
+                priority=6,
+                deduplicate=False,
+            )
+        elif payload.action == "price_change":
+            new_price = _compute_new_price(listing.price, payload.price_mode, payload.price_value)
+            if new_price is None:
+                # Listing has no numeric price (VB, Zu verschenken) — skip
+                continue
+            job = await enqueue_job(
+                db, JobType.UPDATE_LISTING,
+                account_id=listing.account_id,
+                payload={
+                    "listing_id": listing.kleinanzeigen_id,
+                    "title": listing.title,
+                    "price": new_price,
+                    "description": listing.description,
+                },
+                priority=3,
+            )
+        else:
+            continue
         jobs.append(job)
 
     return jobs
