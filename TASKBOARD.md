@@ -15,7 +15,6 @@ Letzte Aktualisierung: 2026-05-22
 - [ ] **CLOUD-03**: bubuanzeigen.de → bububay.de 301 Redirect Rule
 
 ### P1 — Naechste Sprint-Runde
-- [ ] **LISTING-01**: Bulk-Preis aendern (prozentual/absolut)
 - [ ] **LISTING-02**: CSV/Excel Import fuer Inserate (Queue, 10-30 Stueck)
 - [ ] **LISTING-03**: Vorlagen-System (Templates mit Platzhaltern)
 - [ ] **LISTING-04**: Beschreibung von allen Inseraten scrapen
@@ -29,6 +28,7 @@ Letzte Aktualisierung: 2026-05-22
 
 ## IN_PROGRESS
 <!-- - [ ] **TASK-ID**: Beschreibung | Agent: [codex/gpt/opus] | Seit: YYYY-MM-DD | Branch: xxx -->
+- [ ] **LISTING-01**: Bulk-Preis aendern (prozentual/absolut) | Agent: codex | Seit: 2026-05-22 | Branch: main
 
 ## DONE
 - [x] **MSG-02**: Push bei steigendem unread_count | Agent: codex | 2026-05-22 | Commit: d07013f
