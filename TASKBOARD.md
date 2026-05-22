@@ -16,7 +16,6 @@ Letzte Aktualisierung: 2026-05-22
 
 ### P1 — Naechste Sprint-Runde
 - [ ] **LISTING-02**: CSV/Excel Import fuer Inserate (Queue, 10-30 Stueck)
-- [ ] **LISTING-03**: Vorlagen-System (Templates mit Platzhaltern)
 
 ### P2 — Spaeter
 - [ ] **UX-01**: Views-Trend Sparkline pro Inserat
@@ -27,6 +26,7 @@ Letzte Aktualisierung: 2026-05-22
 
 ## IN_PROGRESS
 <!-- - [ ] **TASK-ID**: Beschreibung | Agent: [codex/gpt/opus] | Seit: YYYY-MM-DD | Branch: xxx -->
+- [ ] **LISTING-03**: Vorlagen-System (Templates mit Platzhaltern) | Agent: codex | Seit: 2026-05-22 | Branch: main
 
 ## DONE
 - [x] **LISTING-04**: Bulk-Description-Scrape-Button | Agent: codex | 2026-05-22 | Commit: ecaba58
