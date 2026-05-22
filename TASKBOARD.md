@@ -25,6 +25,7 @@ Letzte Aktualisierung: 2026-05-22
 
 ## IN_PROGRESS
 <!-- - [ ] **TASK-ID**: Beschreibung | Agent: [codex/gpt/opus] | Seit: YYYY-MM-DD | Branch: xxx -->
+- [ ] **AUTH-01 (Pass 2)**: cli_login + crypto isinstance | Agent: codex | Seit: 2026-05-22 | Branch: main
 
 ## DONE
 - [x] **LISTING-04 (Pass 2)**: Detail-Scrape Cap 5 -> 20 | Agent: codex | 2026-05-22 | Commit: d80d4a5
