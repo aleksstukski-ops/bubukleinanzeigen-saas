@@ -25,9 +25,9 @@ Letzte Aktualisierung: 2026-05-22
 
 ## IN_PROGRESS
 <!-- - [ ] **TASK-ID**: Beschreibung | Agent: [codex/gpt/opus] | Seit: YYYY-MM-DD | Branch: xxx -->
-- [ ] **LISTING-02**: CSV-Import Backend | Agent: codex | Seit: 2026-05-22 | Branch: main
 
 ## DONE
+- [x] **LISTING-02**: CSV-Import Backend (Frontend siehe Schlachtplan SPUR B) | Agent: codex | 2026-05-22 | Commit: 5563442
 - [x] **LISTING-03**: Vorlagen-System (Templates mit Platzhaltern) | Agent: codex | 2026-05-22 | Commit: 449a252
 - [x] **LISTING-04**: Bulk-Description-Scrape-Button | Agent: codex | 2026-05-22 | Commit: ecaba58
 - [x] **LISTING-01**: Bulk-Preis (absolut + prozentual) | Agent: codex | 2026-05-22 | Commit: a19cd64
