@@ -25,6 +25,7 @@ Letzte Aktualisierung: 2026-05-22
 
 ## IN_PROGRESS
 <!-- - [ ] **TASK-ID**: Beschreibung | Agent: [codex/gpt/opus] | Seit: YYYY-MM-DD | Branch: xxx -->
+- [ ] **A2**: SEND_MESSAGE Erfolgs-Verifikation (Pass 2) | Agent: codex | Seit: 2026-05-22 | Branch: main
 
 ## DONE
 - [x] **A1**: Scraper Deep-Audit (parallel frame selectors + scoped bump/delete + idle timeouts) | Agent: codex | 2026-05-22 | Commit: 7596ced
