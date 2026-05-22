@@ -51,7 +51,14 @@ class Selectors:
     ]
 
     LOGGED_IN_MARKER = [
+        # Header link to "Meine Anzeigen" — present on every page when logged in
         'a[href*="/m-meine-anzeigen"]',
+        # On /m-meine-anzeigen.html itself the active item may render without href
+        'a[href*="/m-nachrichten"]',
+        'a[href*="/m-einstellungen"]',
+        # Logout button is only rendered for logged-in users
+        'a[href*="/m-logout"]',
+        'button[data-testid*="logout"]',
     ]
 
     # VIP listing detail page (s-anzeige/...) — long description block
