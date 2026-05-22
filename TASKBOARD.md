@@ -28,9 +28,9 @@ Letzte Aktualisierung: 2026-05-22
 
 ## IN_PROGRESS
 <!-- - [ ] **TASK-ID**: Beschreibung | Agent: [codex/gpt/opus] | Seit: YYYY-MM-DD | Branch: xxx -->
-- [ ] **LISTING-01**: Bulk-Preis aendern (prozentual/absolut) | Agent: codex | Seit: 2026-05-22 | Branch: main
 
 ## DONE
+- [x] **LISTING-01**: Bulk-Preis (absolut + prozentual) | Agent: codex | 2026-05-22 | Commit: a19cd64
 - [x] **MSG-02**: Push bei steigendem unread_count | Agent: codex | 2026-05-22 | Commit: d07013f
 - [x] **MSG-01**: SEND_MESSAGE Audit + networkidle Timeout | Agent: codex | 2026-05-22 | Commit: 443f101
 - [x] **AUTH-01**: FERNET_KEY Fail-Fast-Validation | Agent: codex | 2026-05-22 | Commit: 119adf9
