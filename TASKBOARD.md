@@ -25,6 +25,7 @@ Letzte Aktualisierung: 2026-05-22
 
 ## IN_PROGRESS
 <!-- - [ ] **TASK-ID**: Beschreibung | Agent: [codex/gpt/opus] | Seit: YYYY-MM-DD | Branch: xxx -->
+- [ ] **LISTING-04 (Pass 2)**: Detail-Scrape Cap 5 -> 20 | Agent: codex | Seit: 2026-05-22 | Branch: main
 
 ## DONE
 - [x] **A2**: SEND_MESSAGE Erfolgs-Verifikation (textarea-cleared poll + re-fetch submit) | Agent: codex | 2026-05-22 | Commit: 4d97df6
