@@ -399,6 +399,15 @@ export default function ListingsPage() {
                 </button>
                 <button
                   type="button"
+                  className="btn-secondary py-1 px-3 text-sm"
+                  disabled={bulkLoading}
+                  onClick={() => handleBulkAction("scrape_description")}
+                  title="Beschreibung der ausgewaehlten Inserate frisch von Kleinanzeigen laden"
+                >
+                  {bulkLoading ? "..." : `${"📝"} Beschreibung laden`}
+                </button>
+                <button
+                  type="button"
                   className="btn-danger py-1 px-3 text-sm"
                   disabled={bulkLoading}
                   onClick={() => handleBulkAction("delete")}
