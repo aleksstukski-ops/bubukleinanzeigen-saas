@@ -31,9 +31,9 @@ Letzte Aktualisierung: 2026-05-22
 
 ## IN_PROGRESS
 <!-- - [ ] **TASK-ID**: Beschreibung | Agent: [codex/gpt/opus] | Seit: YYYY-MM-DD | Branch: xxx -->
-- [ ] **AUTH-01**: FERNET_KEY Stabilitaet pruefen | Agent: codex | Seit: 2026-05-22 | Branch: main
 
 ## DONE
+- [x] **AUTH-01**: FERNET_KEY Fail-Fast-Validation | Agent: codex | 2026-05-22 | Commit: 119adf9
 - [x] **SCRAPER-01**: Selektoren-Audit + LOGGED_IN_MARKER haerten | Agent: codex | 2026-05-22 | Commit: 634c833
 - [x] **REBRAND-01**: UI-Rebrand | Agent: codex | 2026-05-21 | Commit: 4976a15
 - [x] **MSG-03**: 15s Polling + Badge | Agent: codex | 2026-05-21 | Commit: ab145b1
