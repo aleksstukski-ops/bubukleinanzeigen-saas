@@ -1,7 +1,9 @@
+import csv
+import io
 import re
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -133,6 +135,102 @@ async def create_listing(
         priority=3,
     )
     return job
+
+
+_CSV_REQUIRED_HEADERS = {"title"}
+_CSV_OPTIONAL_HEADERS = {"description", "price", "category_id", "location"}
+_CSV_MAX_ROWS = 30
+
+
+def _decode_upload(raw: bytes) -> str:
+    for enc in ("utf-8-sig", "utf-8", "latin-1"):
+        try:
+            return raw.decode(enc)
+        except UnicodeDecodeError:
+            continue
+    raise HTTPException(status_code=400, detail="CSV-Datei: Encoding nicht erkannt (UTF-8 erwartet).")
+
+
+def _detect_dialect(sample: str) -> csv.Dialect:
+    try:
+        return csv.Sniffer().sniff(sample, delimiters=",;\t")
+    except csv.Error:
+        return csv.excel
+
+
+@router.post("/import-csv", response_model=list[JobOut])
+async def import_listings_csv(
+    account_id: int = Form(...),
+    file: UploadFile = File(...),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Import 1-30 listings from a CSV file. Each row becomes a CREATE_LISTING job.
+
+    Required column: title. Optional: description, price, category_id, location.
+    Excel-style (;) and TSV separators are detected automatically.
+    """
+    account = await _get_account_for_user(db, account_id=account_id, user_id=user.id)
+
+    raw = await file.read()
+    if not raw:
+        raise HTTPException(status_code=400, detail="CSV-Datei ist leer.")
+    if len(raw) > 1_000_000:
+        raise HTTPException(status_code=400, detail="CSV-Datei zu gross (max. 1 MB).")
+
+    text = _decode_upload(raw)
+    sample = text[:2048]
+    dialect = _detect_dialect(sample)
+    reader = csv.DictReader(io.StringIO(text), dialect=dialect)
+
+    headers = {h.strip().lower() for h in (reader.fieldnames or [])}
+    missing = _CSV_REQUIRED_HEADERS - headers
+    if missing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"CSV: fehlende Spalten: {', '.join(sorted(missing))}",
+        )
+
+    jobs: list = []
+    for index, row in enumerate(reader, start=2):  # start=2 because header is row 1
+        if len(jobs) >= _CSV_MAX_ROWS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"CSV enthaelt mehr als {_CSV_MAX_ROWS} Zeilen — bitte in Etappen importieren.",
+            )
+
+        normalized = {(k or "").strip().lower(): (v or "").strip() for k, v in row.items()}
+        title = normalized.get("title", "")
+        if not title:
+            # Skip empty rows silently — common in spreadsheet exports
+            continue
+        if len(title) > 500:
+            raise HTTPException(status_code=400, detail=f"Zeile {index}: Titel zu lang (max. 500 Zeichen).")
+
+        description = normalized.get("description") or None
+        price = normalized.get("price") or None
+        category_id = normalized.get("category_id") or None
+        location = normalized.get("location") or None
+
+        job = await enqueue_job(
+            db,
+            JobType.CREATE_LISTING,
+            account_id=account.id,
+            payload={
+                "title": title,
+                "description": description,
+                "price": price,
+                "category_id": category_id,
+                "location": location,
+            },
+            priority=4,
+        )
+        jobs.append(job)
+
+    if not jobs:
+        raise HTTPException(status_code=400, detail="CSV enthaelt keine verwertbaren Zeilen.")
+
+    return jobs
 
 
 _PRICE_NUMBER_RE = re.compile(r"(\d+(?:[\.,]\d+)?)")
