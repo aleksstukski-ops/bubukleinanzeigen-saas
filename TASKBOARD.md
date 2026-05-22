@@ -13,7 +13,6 @@ Letzte Aktualisierung: 2026-05-22
 - [ ] **CLOUD-01**: Cloudflare bububay.de DNS einrichten (CNAME auf Tunnel)
 - [ ] **CLOUD-02**: api.bububay.de Route im Cloudflare Dashboard hinzufügen
 - [ ] **CLOUD-03**: bubuanzeigen.de → bububay.de 301 Redirect Rule
-- [ ] **SCRAPER-01**: Selektoren gegen aktuelles Kleinanzeigen DOM pruefen
 - [ ] **AUTH-01**: FERNET_KEY Stabilitaet pruefen
 
 ### P1 — Naechste Sprint-Runde
@@ -33,6 +32,7 @@ Letzte Aktualisierung: 2026-05-22
 
 ## IN_PROGRESS
 <!-- - [ ] **TASK-ID**: Beschreibung | Agent: [codex/gpt/opus] | Seit: YYYY-MM-DD | Branch: xxx -->
+- [ ] **SCRAPER-01**: Selektoren gegen aktuelles Kleinanzeigen DOM pruefen | Agent: codex | Seit: 2026-05-22 | Branch: main
 
 ## DONE
 - [x] **REBRAND-01**: UI-Rebrand | Agent: codex | 2026-05-21 | Commit: 4976a15
