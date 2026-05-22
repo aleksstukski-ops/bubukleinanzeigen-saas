@@ -1,7 +1,7 @@
 import hashlib
 from datetime import datetime, timezone
 
-from playwright.async_api import Frame, Page
+from playwright.async_api import Frame, Page, TimeoutError as PlaywrightTimeoutError
 
 from app.models.domain import Message
 from app.scraper.pages.base import BasePage
@@ -163,7 +163,13 @@ class ConversationPage(BasePage):
         await textarea.fill("")
         await textarea.fill(body)
         await submit.click()
-        await self.page.wait_for_load_state("networkidle")
+
+        # Kleinanzeigen SPA keeps a persistent socket — networkidle can stall
+        # forever. Cap the wait so the job does not hang the worker.
+        try:
+            await self.page.wait_for_load_state("networkidle", timeout=8000)
+        except PlaywrightTimeoutError:
+            self.log.debug("send_message: networkidle timeout, continuing")
 
         return {"success": True, "body": body}
 
