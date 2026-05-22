@@ -416,6 +416,13 @@ async def _handle_scrape_messages(job: Job, db: AsyncSession, session_manager: S
             existing_records = existing_result.scalars().all()
             existing_by_ka_id = {record.kleinanzeigen_id: record for record in existing_records}
 
+            # Snapshot previous unread counts before apply_conversation_snapshot
+            # overwrites them — needed to detect "unread_count grew" notifications.
+            previous_unread_by_ka_id = {
+                record.kleinanzeigen_id: int(record.unread_count or 0)
+                for record in existing_records
+            }
+
             created_or_updated, seen_ids = messages_page.apply_conversation_snapshot(
                 existing_by_ka_id,
                 scraped_items,
@@ -436,12 +443,19 @@ async def _handle_scrape_messages(job: Job, db: AsyncSession, session_manager: S
             account.last_scraped_at = now
             await db.commit()
 
-            # Push notification for new unread conversations
-            new_unread = sum(
-                1 for item in scraped_items
-                if item.get("unread_count", 0) > 0
-                and item["kleinanzeigen_id"] not in existing_by_ka_id
-            )
+            # Push notification covers both brand-new conversations with unread > 0
+            # AND existing conversations where unread_count grew since last scrape.
+            new_unread = 0
+            for item in scraped_items:
+                ka_id = item["kleinanzeigen_id"]
+                current_unread = int(item.get("unread_count") or 0)
+                if current_unread <= 0:
+                    continue
+                previous_unread = previous_unread_by_ka_id.get(ka_id, 0)
+                if ka_id not in previous_unread_by_ka_id:
+                    new_unread += current_unread
+                elif current_unread > previous_unread:
+                    new_unread += current_unread - previous_unread
             if new_unread > 0:
                 user_result = await db.execute(
                     select(User).join(KleinanzeigenAccount, KleinanzeigenAccount.user_id == User.id)
