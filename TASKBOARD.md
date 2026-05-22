@@ -15,7 +15,6 @@ Letzte Aktualisierung: 2026-05-22
 - [ ] **CLOUD-03**: bubuanzeigen.de → bububay.de 301 Redirect Rule
 
 ### P1 — Naechste Sprint-Runde
-- [ ] **MSG-01**: Nachrichten senden testen (SEND_MESSAGE E2E)
 - [ ] **MSG-02**: Push-Notification bei neuer Nachricht
 - [ ] **LISTING-01**: Bulk-Preis aendern (prozentual/absolut)
 - [ ] **LISTING-02**: CSV/Excel Import fuer Inserate (Queue, 10-30 Stueck)
@@ -31,6 +30,7 @@ Letzte Aktualisierung: 2026-05-22
 
 ## IN_PROGRESS
 <!-- - [ ] **TASK-ID**: Beschreibung | Agent: [codex/gpt/opus] | Seit: YYYY-MM-DD | Branch: xxx -->
+- [ ] **MSG-01**: Nachrichten senden testen (SEND_MESSAGE E2E) | Agent: codex | Seit: 2026-05-22 | Branch: main
 
 ## DONE
 - [x] **AUTH-01**: FERNET_KEY Fail-Fast-Validation | Agent: codex | 2026-05-22 | Commit: 119adf9
