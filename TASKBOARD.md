@@ -15,7 +15,6 @@ Letzte Aktualisierung: 2026-05-22
 - [ ] **CLOUD-03**: bubuanzeigen.de → bububay.de 301 Redirect Rule
 
 ### P1 — Naechste Sprint-Runde
-- [ ] **LISTING-02**: CSV/Excel Import fuer Inserate (Queue, 10-30 Stueck)
 
 ### P2 — Spaeter
 - [ ] **UX-01**: Views-Trend Sparkline pro Inserat
@@ -26,6 +25,7 @@ Letzte Aktualisierung: 2026-05-22
 
 ## IN_PROGRESS
 <!-- - [ ] **TASK-ID**: Beschreibung | Agent: [codex/gpt/opus] | Seit: YYYY-MM-DD | Branch: xxx -->
+- [ ] **LISTING-02**: CSV-Import Backend | Agent: codex | Seit: 2026-05-22 | Branch: main
 
 ## DONE
 - [x] **LISTING-03**: Vorlagen-System (Templates mit Platzhaltern) | Agent: codex | 2026-05-22 | Commit: 449a252
