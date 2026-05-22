@@ -230,9 +230,9 @@ async def update_listing(
         account_id=account.id,
         payload={
             "listing_id": listing.kleinanzeigen_id,
-            "title": payload.title,
-            "price": payload.price,
-            "description": payload.description,
+            "title": payload.title if payload.title is not None else listing.title,
+            "price": payload.price if payload.price is not None else listing.price,
+            "description": payload.description if payload.description is not None else listing.description,
         },
         priority=3,
     )

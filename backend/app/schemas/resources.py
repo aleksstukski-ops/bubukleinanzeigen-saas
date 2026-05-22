@@ -67,7 +67,7 @@ class BulkActionIn(BaseModel):
 
 class ListingUpdateIn(BaseModel):
     account_id: int
-    title: str = Field(min_length=1, max_length=500)
+    title: str | None = Field(default=None, min_length=1, max_length=500)
     price: str | None = Field(default=None, max_length=64)
     description: str | None = Field(default=None, max_length=10000)
 
