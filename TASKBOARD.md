@@ -29,9 +29,9 @@ Letzte Aktualisierung: 2026-05-22
 
 ## IN_PROGRESS
 <!-- - [ ] **TASK-ID**: Beschreibung | Agent: [codex/gpt/opus] | Seit: YYYY-MM-DD | Branch: xxx -->
-- [ ] **MSG-02**: Push-Notification bei neuer Nachricht | Agent: codex | Seit: 2026-05-22 | Branch: main
 
 ## DONE
+- [x] **MSG-02**: Push bei steigendem unread_count | Agent: codex | 2026-05-22 | Commit: d07013f
 - [x] **MSG-01**: SEND_MESSAGE Audit + networkidle Timeout | Agent: codex | 2026-05-22 | Commit: 443f101
 - [x] **AUTH-01**: FERNET_KEY Fail-Fast-Validation | Agent: codex | 2026-05-22 | Commit: 119adf9
 - [x] **SCRAPER-01**: Selektoren-Audit + LOGGED_IN_MARKER haerten | Agent: codex | 2026-05-22 | Commit: 634c833
