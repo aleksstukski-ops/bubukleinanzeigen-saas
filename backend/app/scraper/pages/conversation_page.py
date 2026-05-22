@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 from datetime import datetime, timezone
 
@@ -212,16 +213,49 @@ class ConversationPage(BasePage):
         *,
         timeout: int = 10000,
     ) -> str:
-        last_error = None
-        for selector in selectors:
-            try:
-                await frame.wait_for_selector(selector, timeout=timeout)
-                return selector
-            except Exception as error:
-                last_error = error
-        if last_error is not None:
-            raise last_error
-        raise ValueError("No frame selector matched")
+        """Race a fallback selector list in parallel.
+
+        The previous sequential approach blocked up to timeout*N when no
+        selector matched (60s for 6 fallbacks at 10s each). Now total wait
+        equals a single selector timeout.
+        """
+        selector_list = list(selectors)
+        if not selector_list:
+            raise ValueError("selectors must not be empty")
+
+        if len(selector_list) == 1:
+            await frame.wait_for_selector(selector_list[0], timeout=timeout)
+            return selector_list[0]
+
+        async def _try(sel: str) -> str:
+            await frame.wait_for_selector(sel, timeout=timeout)
+            return sel
+
+        tasks = [asyncio.create_task(_try(sel)) for sel in selector_list]
+        winner: str | None = None
+        try:
+            done, _ = await asyncio.wait(
+                tasks,
+                return_when=asyncio.FIRST_COMPLETED,
+                timeout=timeout / 1000,
+            )
+            for task in done:
+                if not task.cancelled() and task.exception() is None:
+                    winner = task.result()
+                    break
+        finally:
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
+            await asyncio.gather(*[t for t in tasks if not t.done()], return_exceptions=True)
+
+        if winner is None:
+            raise PlaywrightTimeoutError(
+                f"None of the frame selectors matched within timeout: {selector_list}"
+            )
+        if selector_list.index(winner) > 0:
+            self.log.warning("Frame selector fallback hit: %s", winner)
+        return winner
 
     @staticmethod
     def _build_message_id(*, index: int, body: str, meta: str | None, direction: str) -> str:

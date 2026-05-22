@@ -1,4 +1,4 @@
-from playwright.async_api import Page, TimeoutError as PlaywrightTimeoutError
+from playwright.async_api import ElementHandle, Page, TimeoutError as PlaywrightTimeoutError
 
 from app.scraper.pages.base import BasePage
 from app.scraper.selectors import Selectors, UrlPatterns
@@ -15,6 +15,48 @@ class EditListingPage(BasePage):
         )
         await self.wait_until_ready()
         await self.wait_for_edit_form()
+
+    async def _wait_for_idle(self, timeout: int = 10000) -> None:
+        """Bounded wait_for_load_state — Kleinanzeigen SPA never goes truly idle."""
+        try:
+            await self.page.wait_for_load_state("networkidle", timeout=timeout)
+        except PlaywrightTimeoutError:
+            self.log.debug("networkidle timeout, continuing")
+
+    async def _find_listing_card(self, listing_id: str) -> ElementHandle | None:
+        """Locate a single listing card on /m-meine-anzeigen.html by its KA id.
+
+        Falls back through several wrapper conventions before giving up.
+        Returns None when no scoping element can be found; callers may then
+        fall back to page-wide selectors.
+        """
+        candidates = [
+            f'article[data-adid="{listing_id}"]',
+            f'[data-adid="{listing_id}"]',
+            f'article:has(a[href*="/{listing_id}-"])',
+            f'li:has(a[href*="/{listing_id}-"])',
+        ]
+        for selector in candidates:
+            try:
+                handle = await self.page.query_selector(selector)
+            except Exception:
+                handle = None
+            if handle is not None:
+                return handle
+        return None
+
+    async def _click_scoped(
+        self,
+        scope: ElementHandle | None,
+        selectors: list[str],
+    ) -> bool:
+        """Click the first matching selector inside *scope*; falls back to page."""
+        root = scope if scope is not None else self.page
+        handle = await self.try_selectors(root, selectors)
+        if handle is None:
+            return False
+        await handle.click()
+        return True
 
     async def wait_for_edit_form(self) -> None:
         try:
@@ -51,11 +93,18 @@ class EditListingPage(BasePage):
     async def bump_listing(self, listing_id: str) -> dict:
         await self.page.goto(UrlPatterns.MY_ADS_URL, wait_until="domcontentloaded")
         await self.wait_until_ready()
+        await self.wait_for_selector_list(Selectors.AD_LIST_ITEM)
 
-        if not await self._click_if_present(Selectors.LISTING_BUMP_BUTTON):
+        card = await self._find_listing_card(listing_id)
+        if card is None:
+            self.log.warning(
+                "bump_listing: could not scope to card for %s, falling back to page-wide click",
+                listing_id,
+            )
+        if not await self._click_scoped(card, Selectors.LISTING_BUMP_BUTTON):
             raise ValueError(f"Bump button not found for listing {listing_id}")
 
-        await self.page.wait_for_load_state("networkidle")
+        await self._wait_for_idle()
 
         return {
             "success": True,
@@ -66,13 +115,23 @@ class EditListingPage(BasePage):
     async def delete_listing(self, listing_id: str) -> dict:
         await self.page.goto(UrlPatterns.MY_ADS_URL, wait_until="domcontentloaded")
         await self.wait_until_ready()
+        await self.wait_for_selector_list(Selectors.AD_LIST_ITEM)
 
-        if not await self._click_if_present(Selectors.LISTING_DELETE_BUTTON):
+        card = await self._find_listing_card(listing_id)
+        if card is None:
+            self.log.warning(
+                "delete_listing: could not scope to card for %s, falling back to page-wide click",
+                listing_id,
+            )
+        if not await self._click_scoped(card, Selectors.LISTING_DELETE_BUTTON):
             raise ValueError(f"Delete button not found for listing {listing_id}")
 
-        confirm_selector = await self.wait_for_selector_list(Selectors.LISTING_DELETE_CONFIRM_BUTTON, timeout=10000)
+        # Confirmation dialog is page-level (modal), not inside the card
+        confirm_selector = await self.wait_for_selector_list(
+            Selectors.LISTING_DELETE_CONFIRM_BUTTON, timeout=10000
+        )
         await self.page.click(confirm_selector)
-        await self.page.wait_for_load_state("networkidle")
+        await self._wait_for_idle()
 
         return {
             "success": True,
@@ -107,5 +166,5 @@ class EditListingPage(BasePage):
         except PlaywrightTimeoutError:
             pass
 
-        await self.page.wait_for_load_state("networkidle")
+        await self._wait_for_idle()
         await self.wait_until_ready()
