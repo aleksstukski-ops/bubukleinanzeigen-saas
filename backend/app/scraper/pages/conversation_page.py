@@ -145,32 +145,64 @@ class ConversationPage(BasePage):
         return self.page
 
     async def send_message(self, body: str) -> dict:
-        """Type and submit a reply in the currently open conversation."""
+        """Type and submit a reply, then verify the submission actually went through.
+
+        Kleinanzeigen clears the reply textarea on a successful POST. We use
+        that as the success signal — if the textarea still contains the body
+        after a short wait, the submit silently failed (validation, rate limit,
+        network blip) and we raise ValueError so the worker can retry.
+        """
         frame = await self.get_messages_frame()
 
         textarea_selector = await self._wait_for_frame_selector(
             frame, Selectors.CONVERSATION_REPLY_TEXTAREA, timeout=10000
         )
-        submit_selector = await self._wait_for_frame_selector(
-            frame, Selectors.CONVERSATION_REPLY_SUBMIT, timeout=10000
-        )
-
         textarea = await frame.query_selector(textarea_selector)
-        submit = await frame.query_selector(submit_selector)
-        if textarea is None or submit is None:
-            raise ValueError("Reply form elements not found")
+        if textarea is None:
+            raise ValueError("Reply textarea not found")
 
         await textarea.click()
         await textarea.fill("")
         await textarea.fill(body)
+
+        # Re-fetch submit element AFTER filling — React-style SPAs may have
+        # re-rendered the button (enabling it because input is non-empty);
+        # the handle we grabbed before fill() can be a detached node.
+        submit_selector = await self._wait_for_frame_selector(
+            frame, Selectors.CONVERSATION_REPLY_SUBMIT, timeout=10000
+        )
+        submit = await frame.query_selector(submit_selector)
+        if submit is None:
+            raise ValueError("Reply submit button not found")
         await submit.click()
 
-        # Kleinanzeigen SPA keeps a persistent socket — networkidle can stall
-        # forever. Cap the wait so the job does not hang the worker.
+        # Persistent SPA socket means networkidle never resolves — bound it.
         try:
             await self.page.wait_for_load_state("networkidle", timeout=8000)
         except PlaywrightTimeoutError:
             self.log.debug("send_message: networkidle timeout, continuing")
+
+        # Success verification: poll the textarea up to ~3 s; Kleinanzeigen
+        # clears it on a successful send. If it is still populated, treat as
+        # failure so the job retries instead of marking it shipped.
+        cleared = False
+        for _ in range(15):
+            try:
+                current_value = await textarea.input_value()
+            except Exception:
+                # Element was detached — common on success because the form re-renders.
+                cleared = True
+                break
+            if (current_value or "").strip() == "":
+                cleared = True
+                break
+            await self.page.wait_for_timeout(200)
+
+        if not cleared:
+            raise ValueError(
+                "Reply textarea still contains the message after submit — "
+                "send likely failed (validation/rate-limit/network)."
+            )
 
         return {"success": True, "body": body}
 
