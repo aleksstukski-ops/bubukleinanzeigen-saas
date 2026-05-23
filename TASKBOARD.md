@@ -18,16 +18,14 @@ Letzte Aktualisierung: 2026-05-22
 
 ### P2 — Spaeter
 - [ ] **UX-01**: Views-Trend Sparkline pro Inserat
-- [ ] **UX-02**: Session-Auto-Refresh mit freundlichem Banner
-- [ ] **STRIPE-01**: Stripe Produkte anlegen + Webhook testen
 - [ ] **MULTI-01**: eBay API-Anbindung (Phase 2 Multi-Platform)
-- [ ] **INFRA-01**: Repo umbenennen bubukleinanzeigen-saas → bububay
+- [ ] **INFRA-01**: Repo umbenennen bubukleinanzeigen-saas → bububay (GitHub-Rename, Chef-Task)
 
 ## IN_PROGRESS
 <!-- - [ ] **TASK-ID**: Beschreibung | Agent: [codex/gpt/opus] | Seit: YYYY-MM-DD | Branch: xxx -->
-- [ ] **UX-02**: Session-Auto-Refresh Banner | Agent: codex | Seit: 2026-05-23 | Branch: main
 
 ## DONE
+- [x] **UX-02**: Session-Banner mit /ka-accounts/health-summary Polling | Agent: codex | 2026-05-23 | Commit: 0c8cffe
 - [x] **A5 (Pass 2)**: Dedizierter POST /listings/bulk-price Endpoint (signed-value percent) | Agent: codex | 2026-05-23 | Commit: ac63140
 - [x] **A3 (Pass 2)**: Richer push body (partner+preview) + rebrand email copy | Agent: codex | 2026-05-23 | Commit: 9749e0e
 - [x] **AUTH-01 (Pass 2)**: cli_login picks up project-root .env + crypto type guard | Agent: codex | 2026-05-23 | Commit: b712472
