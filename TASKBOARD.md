@@ -25,6 +25,7 @@ Letzte Aktualisierung: 2026-05-22
 
 ## IN_PROGRESS
 <!-- - [ ] **TASK-ID**: Beschreibung | Agent: [codex/gpt/opus] | Seit: YYYY-MM-DD | Branch: xxx -->
+- [ ] **A5 (Pass 2)**: Dedizierter /listings/bulk-price Endpoint | Agent: codex | Seit: 2026-05-23 | Branch: main
 
 ## DONE
 - [x] **A3 (Pass 2)**: Richer push body (partner+preview) + rebrand email copy | Agent: codex | 2026-05-23 | Commit: 9749e0e
