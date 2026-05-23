@@ -23,9 +23,9 @@ Letzte Aktualisierung: 2026-05-22
 
 ## IN_PROGRESS
 <!-- - [ ] **TASK-ID**: Beschreibung | Agent: [codex/gpt/opus] | Seit: YYYY-MM-DD | Branch: xxx -->
-- [ ] **INFRA-01**: README.md schreiben | Agent: codex | Seit: 2026-05-23 | Branch: main
 
 ## DONE
+- [x] **INFRA-01 (Doku)**: README.md neu (BubuBay-Branding) | Agent: codex | 2026-05-23 | Commit: 2502f70
 - [x] **STRIPE-01**: Webhook-Dedupe + payment_failed + Ablaufdatum UI | Agent: codex | 2026-05-23 | Commit: 583f078
 - [x] **UX-02**: Session-Banner mit /ka-accounts/health-summary Polling | Agent: codex | 2026-05-23 | Commit: 0c8cffe
 - [x] **A5 (Pass 2)**: Dedizierter POST /listings/bulk-price Endpoint (signed-value percent) | Agent: codex | 2026-05-23 | Commit: ac63140
