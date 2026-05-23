@@ -248,7 +248,7 @@ export default function MessagesPage() {
               <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Partner oder Betreff" className="input" />
             </div>
             <label className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700">
-              <input type="checkbox" checked={onlyUnread} onChange={(e) => setOnlyUnread(e.target.checked)} className="h-4 w-4 rounded border-slate-300 text-blue-600" />
+              <input type="checkbox" checked={onlyUnread} onChange={(e) => setOnlyUnread(e.target.checked)} className="h-5 w-5 rounded border-slate-300 text-blue-600" />
               Nur ungelesene
             </label>
           </div>

@@ -60,7 +60,7 @@ export default function StatsPage() {
     .sort((a, b) => Number(b.view_count || 0) - Number(a.view_count || 0))
     .slice(0, 15)
     .map((l) => ({
-      name: truncate(l.title, 20),
+      name: truncate(l.title, 14),
       views: Number(l.view_count || 0),
       bookmarks: Number(l.bookmark_count || 0),
       id: l.kleinanzeigen_id,
@@ -140,14 +140,14 @@ export default function StatsPage() {
           <h2 className="mb-4 text-base font-semibold text-slate-900">Top Inserate nach Views</h2>
           <div style={{ width: "100%", height: Math.max(250, topByViews.length * 32) }}>
             <ResponsiveContainer>
-              <BarChart data={topByViews} layout="vertical" margin={{ left: 10, right: 20, top: 5, bottom: 5 }}>
+              <BarChart data={topByViews} layout="vertical" margin={{ left: 0, right: 20, top: 5, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis type="number" tick={{ fontSize: 12 }} />
+                <XAxis type="number" tick={{ fontSize: 11 }} />
                 <YAxis
                   type="category"
                   dataKey="name"
-                  width={140}
-                  tick={{ fontSize: 11 }}
+                  width={100}
+                  tick={{ fontSize: 10 }}
                 />
                 <Tooltip
                   contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 13 }}
@@ -220,11 +220,11 @@ export default function StatsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100 text-left text-xs font-medium uppercase tracking-wider text-slate-400">
-                  <th className="px-4 py-3">Inserat</th>
-                  <th className="px-4 py-3 text-right">Preis</th>
-                  <th className="px-4 py-3 text-right">Views</th>
-                  <th className="px-4 py-3 text-right">Gemerkt</th>
-                  <th className="px-4 py-3 text-center">Konto</th>
+                  <th className="px-3 py-3 sm:px-4">Inserat</th>
+                  <th className="hidden px-3 py-3 text-right sm:table-cell">Preis</th>
+                  <th className="px-3 py-3 text-right sm:px-4">Views</th>
+                  <th className="px-3 py-3 text-right sm:px-4">Gemerkt</th>
+                  <th className="hidden px-3 py-3 text-center sm:table-cell">Konto</th>
                 </tr>
               </thead>
               <tbody>
@@ -234,21 +234,22 @@ export default function StatsPage() {
                     <tr
                       key={l.kleinanzeigen_id}
                       className="cursor-pointer border-b border-slate-50 hover:bg-slate-50 transition-colors"
+                      style={{ minHeight: "44px" }}
                       onClick={() => loadHistory(l)}
                     >
-                      <td className="max-w-[200px] truncate px-4 py-3 font-medium text-slate-800">
+                      <td className="max-w-[140px] truncate px-3 py-3 font-medium text-slate-800 sm:max-w-[200px] sm:px-4">
                         {l.title || "—"}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-right text-slate-600">
+                      <td className="hidden whitespace-nowrap px-3 py-3 text-right text-slate-600 sm:table-cell">
                         {l.price || "—"}
                       </td>
-                      <td className="px-4 py-3 text-right font-medium text-blue-600">
+                      <td className="px-3 py-3 text-right font-medium text-blue-600 sm:px-4">
                         {Number(l.view_count || 0).toLocaleString("de-DE")}
                       </td>
-                      <td className="px-4 py-3 text-right text-amber-600">
+                      <td className="px-3 py-3 text-right text-amber-600 sm:px-4">
                         {Number(l.bookmark_count || 0).toLocaleString("de-DE")}
                       </td>
-                      <td className="px-4 py-3 text-center text-xs text-slate-500">
+                      <td className="hidden px-3 py-3 text-center text-xs text-slate-500 sm:table-cell">
                         {accountLabelById.get(l.account_id) || `#${l.account_id}`}
                       </td>
                     </tr>
