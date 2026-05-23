@@ -100,7 +100,15 @@ export default function BillingPage() {
   }
 
   const currentPlan = user?.plan || "free";
-  const isSubscribed = user?.subscription_status === "active";
+  const subscriptionStatus = user?.subscription_status || null;
+  const isSubscribed = subscriptionStatus === "active";
+  const isPastDue = subscriptionStatus === "past_due";
+  const expiresAt = user?.subscription_expires_at
+    ? new Date(user.subscription_expires_at)
+    : null;
+  const formattedExpiry = expiresAt && !isNaN(expiresAt.getTime())
+    ? new Intl.DateTimeFormat("de-DE", { dateStyle: "long" }).format(expiresAt)
+    : null;
 
   const handleUpgrade = async (planId) => {
     setError(null);
@@ -139,7 +147,22 @@ export default function BillingPage() {
               {'✓'} Aktiv
             </span>
           )}
+          {isPastDue && (
+            <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+              {'⚠️'} Zahlung fehlgeschlagen
+            </span>
+          )}
         </p>
+        {isSubscribed && formattedExpiry && (
+          <p className="mt-1 text-xs text-slate-500">
+            Naechste Abbuchung: {formattedExpiry}
+          </p>
+        )}
+        {isPastDue && (
+          <p className="mt-1 text-xs text-amber-700">
+            Bitte Zahlungsmethode im Stripe-Kundenportal aktualisieren.
+          </p>
+        )}
       </div>
 
       {successPlan && (

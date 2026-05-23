@@ -5,6 +5,10 @@ import { useAuth } from "../hooks/useAuth";
 import Modal from "../components/Modal";
 import { usePushNotifications } from "../hooks/usePushNotifications";
 import OnboardingWizard, { needsOnboarding } from "../components/OnboardingWizard";
+import {
+  BarChart, Bar, AreaChart, Area,
+  XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+} from "recharts";
 
 function getErrorMessage(error) {
   return error?.response?.data?.detail || error?.message || "Aktion fehlgeschlagen.";
@@ -48,6 +52,8 @@ export default function DashboardPage() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [topListingsChart, setTopListingsChart] = useState([]);
+  const [viewsByAccount, setViewsByAccount] = useState([]);
 
   const loadAccounts = async () => {
     setLoadingAccounts(true);
@@ -63,6 +69,29 @@ export default function DashboardPage() {
       setTotalViews(allListings.reduce((sum, l) => sum + Number(l.view_count || 0), 0));
       const allConvs = convsRes.data || [];
       setTotalUnread(allConvs.reduce((sum, c) => sum + Number(c.unread_count || 0), 0));
+
+      // Build top-5 listings bar chart data
+      const top5 = [...allListings]
+        .sort((a, b) => Number(b.view_count || 0) - Number(a.view_count || 0))
+        .slice(0, 5)
+        .map((l) => ({
+          name: (l.title || "").length > 18 ? (l.title || "").slice(0, 18) + "..." : (l.title || ""),
+          views: Number(l.view_count || 0),
+          bookmarks: Number(l.bookmark_count || 0),
+        }));
+      setTopListingsChart(top5);
+
+      // Build views-per-account area chart data
+      const accMap = new Map((accountsRes.data || []).map((a) => [a.id, a.label || "Konto " + a.id]));
+      const byAcc = {};
+      for (const l of allListings) {
+        const key = accMap.get(l.account_id) || "Konto " + l.account_id;
+        if (!byAcc[key]) byAcc[key] = { name: key, views: 0, listings: 0 };
+        byAcc[key].views += Number(l.view_count || 0);
+        byAcc[key].listings += 1;
+      }
+      setViewsByAccount(Object.values(byAcc));
+
       await refreshUser();
     } catch (error) {
       setPageError(getErrorMessage(error));
