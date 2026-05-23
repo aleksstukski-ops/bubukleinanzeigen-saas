@@ -25,9 +25,9 @@ Letzte Aktualisierung: 2026-05-22
 
 ## IN_PROGRESS
 <!-- - [ ] **TASK-ID**: Beschreibung | Agent: [codex/gpt/opus] | Seit: YYYY-MM-DD | Branch: xxx -->
-- [ ] **AUTH-01 (Pass 2)**: cli_login + crypto isinstance | Agent: codex | Seit: 2026-05-22 | Branch: main
 
 ## DONE
+- [x] **AUTH-01 (Pass 2)**: cli_login picks up project-root .env + crypto type guard | Agent: codex | 2026-05-23 | Commit: b712472
 - [x] **LISTING-04 (Pass 2)**: Detail-Scrape Cap 5 -> 20 | Agent: codex | 2026-05-22 | Commit: d80d4a5
 - [x] **A2**: SEND_MESSAGE Erfolgs-Verifikation (textarea-cleared poll + re-fetch submit) | Agent: codex | 2026-05-22 | Commit: 4d97df6
 - [x] **A1**: Scraper Deep-Audit (parallel frame selectors + scoped bump/delete + idle timeouts) | Agent: codex | 2026-05-22 | Commit: 7596ced
