@@ -197,6 +197,48 @@ export default function DashboardPage() {
           </div>
         </section>
 
+        {topListingsChart.length > 0 && (
+          <section className="card">
+            <h2 className="text-lg font-semibold text-slate-900">{'📊'} Top Inserate nach Views</h2>
+            <div className="mt-4" style={{ width: "100%", height: Math.max(180, topListingsChart.length * 36) }}>
+              <ResponsiveContainer>
+                <BarChart data={topListingsChart} layout="vertical" margin={{ left: 0, right: 16, top: 4, bottom: 4 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis type="number" tick={{ fontSize: 11 }} />
+                  <YAxis type="category" dataKey="name" width={90} tick={{ fontSize: 10 }} />
+                  <Tooltip
+                    contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 13 }}
+                    formatter={(value, name) => [Number(value).toLocaleString("de-DE"), name === "views" ? "Views" : "Gemerkt"]}
+                  />
+                  <Bar dataKey="views" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="bookmarks" fill="#f59e0b" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+        )}
+
+        {viewsByAccount.length > 1 && (
+          <section className="card">
+            <h2 className="text-lg font-semibold text-slate-900">{'👁️'} Views pro Konto</h2>
+            <div className="mt-4" style={{ width: "100%", height: 220 }}>
+              <ResponsiveContainer>
+                <AreaChart data={viewsByAccount} margin={{ left: 0, right: 16, top: 4, bottom: 4 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip
+                    contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 13 }}
+                    formatter={(value, name) => [Number(value).toLocaleString("de-DE"), name === "views" ? "Views" : "Inserate"]}
+                  />
+                  <Area type="monotone" dataKey="views" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.15} strokeWidth={2} />
+                  <Area type="monotone" dataKey="listings" stroke="#10b981" fill="#10b981" fillOpacity={0.1} strokeWidth={2} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+        )}
+
         <section className="card">
           <div className="flex items-center justify-between gap-3">
             <div>
