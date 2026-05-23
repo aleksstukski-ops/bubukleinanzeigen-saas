@@ -68,6 +68,18 @@ class BulkActionIn(BaseModel):
     price_value: float | None = Field(default=None, gt=0)
 
 
+class BulkPriceIn(BaseModel):
+    """Dedicated bulk price-change payload — cleaner than BulkActionIn for this case.
+
+    mode="absolute" + value=99 → every listing set to "99 EUR"
+    mode="percent"  + value=-10 → each listing's price reduced by 10%
+    mode="percent"  + value=+5  → each listing's price raised by 5%
+    """
+    listing_ids: list[str] = Field(min_length=1, max_length=100)
+    mode: str  # "absolute" | "percent"
+    value: float
+
+
 class ListingUpdateIn(BaseModel):
     account_id: int
     title: str | None = Field(default=None, min_length=1, max_length=500)

@@ -363,13 +363,47 @@ export default function ListingsPage() {
     }
   };
 
-  const handleBulkPriceChange = () => {
+  const handleBulkPriceChange = async () => {
     const numeric = Number(String(priceValue).replace(",", "."));
     if (!Number.isFinite(numeric) || numeric <= 0) {
       setPageError("Preiswert muss eine positive Zahl sein.");
       return;
     }
-    handleBulkAction("price_change", { price_mode: priceMode, price_value: numeric });
+    if (selectedIds.size === 0) return;
+
+    // Map the UI's 3-way selector onto the new endpoint's 2-mode contract:
+    //   percent_decrease -> mode=percent, value=-numeric
+    //   percent_increase -> mode=percent, value=+numeric
+    //   absolute         -> mode=absolute, value=numeric
+    let mode = "absolute";
+    let value = numeric;
+    if (priceMode === "percent_decrease") { mode = "percent"; value = -numeric; }
+    else if (priceMode === "percent_increase") { mode = "percent"; value = numeric; }
+
+    setBulkLoading(true);
+    setPageError("");
+    setPageNotice("");
+    try {
+      const res = await api.post("/listings/bulk-price", {
+        listing_ids: [...selectedIds],
+        mode,
+        value,
+      });
+      const count = res.data.length;
+      const skipped = selectedIds.size - count;
+      const note = skipped > 0
+        ? `${count} Job(s) gestartet (${skipped} uebersprungen).`
+        : `${count} Job(s) gestartet.`;
+      setPageNotice(note);
+      setSelectedIds(new Set());
+      setPriceChangeOpen(false);
+      setPriceValue("");
+      await loadListings();
+    } catch (error) {
+      setPageError(getErrorMessage(error));
+    } finally {
+      setBulkLoading(false);
+    }
   };
 
   return (

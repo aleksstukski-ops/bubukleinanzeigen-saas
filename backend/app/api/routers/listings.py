@@ -13,6 +13,7 @@ from app.models import JobType, KleinanzeigenAccount, Listing, User
 from app.models.domain import ListingStat
 from app.schemas.resources import (
     BulkActionIn,
+    BulkPriceIn,
     BumpScheduleIn,
     CreateListingIn,
     JobOut,
@@ -271,6 +272,71 @@ def _compute_new_price(current: str | None, mode: str, value: float) -> str | No
     if new_value <= 0:
         return None
     return _format_price(new_value)
+
+
+@router.post("/bulk-price", response_model=list[JobOut])
+async def bulk_price(
+    payload: BulkPriceIn,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Apply an absolute or percentage price change across many listings.
+
+    mode="absolute" sets every listing's price to value EUR (value > 0).
+    mode="percent"  multiplies the current price; positive value = increase,
+                    negative value = decrease. Listings without a numeric
+                    current price (VB, Zu verschenken) are skipped silently
+                    — the response only contains the jobs actually enqueued.
+    """
+    if payload.mode not in ("absolute", "percent"):
+        raise HTTPException(status_code=400, detail="mode must be 'absolute' or 'percent'")
+    if payload.mode == "absolute" and payload.value <= 0:
+        raise HTTPException(status_code=400, detail="absolute value must be > 0")
+    if payload.mode == "percent" and (payload.value <= -100 or payload.value == 0):
+        raise HTTPException(
+            status_code=400,
+            detail="percent value must be non-zero and greater than -100",
+        )
+
+    # Map the cleaner public {absolute, percent+signed value} interface onto
+    # the existing 3-mode internal helper.
+    if payload.mode == "absolute":
+        internal_mode, internal_value = "absolute", payload.value
+    elif payload.value > 0:
+        internal_mode, internal_value = "percent_increase", payload.value
+    else:
+        internal_mode, internal_value = "percent_decrease", abs(payload.value)
+
+    result = await db.execute(
+        select(Listing)
+        .join(KleinanzeigenAccount, KleinanzeigenAccount.id == Listing.account_id)
+        .where(
+            Listing.kleinanzeigen_id.in_(payload.listing_ids),
+            KleinanzeigenAccount.user_id == user.id,
+            Listing.is_active.is_(True),
+        )
+    )
+    listings = result.scalars().all()
+
+    jobs: list = []
+    for listing in listings:
+        new_price = _compute_new_price(listing.price, internal_mode, internal_value)
+        if new_price is None:
+            continue
+        job = await enqueue_job(
+            db, JobType.UPDATE_LISTING,
+            account_id=listing.account_id,
+            payload={
+                "listing_id": listing.kleinanzeigen_id,
+                "title": listing.title,
+                "price": new_price,
+                "description": listing.description,
+            },
+            priority=3,
+        )
+        jobs.append(job)
+
+    return jobs
 
 
 @router.post("/bulk-action", response_model=list[JobOut])
