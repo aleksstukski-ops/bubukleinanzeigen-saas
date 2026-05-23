@@ -23,6 +23,7 @@ Letzte Aktualisierung: 2026-05-22
 
 ## IN_PROGRESS
 <!-- - [ ] **TASK-ID**: Beschreibung | Agent: [codex/gpt/opus] | Seit: YYYY-MM-DD | Branch: xxx -->
+- [ ] **INFRA-01**: README.md schreiben | Agent: codex | Seit: 2026-05-23 | Branch: main
 
 ## DONE
 - [x] **STRIPE-01**: Webhook-Dedupe + payment_failed + Ablaufdatum UI | Agent: codex | 2026-05-23 | Commit: 583f078
