@@ -12,9 +12,13 @@ def _load_fernet() -> Fernet:
   )
  if isinstance(key, str):
   key = key.encode()
+ if not isinstance(key, (bytes, bytearray)):
+  raise RuntimeError(
+   f"FERNET_KEY must be str or bytes, got {type(key).__name__}"
+  )
  try:
   return Fernet(key)
- except (ValueError, Exception) as exc:
+ except Exception as exc:
   raise RuntimeError(
    f"FERNET_KEY is invalid (must be 32 url-safe base64 bytes): {exc}"
   ) from exc
