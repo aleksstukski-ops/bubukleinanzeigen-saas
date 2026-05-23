@@ -25,9 +25,9 @@ Letzte Aktualisierung: 2026-05-22
 
 ## IN_PROGRESS
 <!-- - [ ] **TASK-ID**: Beschreibung | Agent: [codex/gpt/opus] | Seit: YYYY-MM-DD | Branch: xxx -->
-- [ ] **A5 (Pass 2)**: Dedizierter /listings/bulk-price Endpoint | Agent: codex | Seit: 2026-05-23 | Branch: main
 
 ## DONE
+- [x] **A5 (Pass 2)**: Dedizierter POST /listings/bulk-price Endpoint (signed-value percent) | Agent: codex | 2026-05-23 | Commit: ac63140
 - [x] **A3 (Pass 2)**: Richer push body (partner+preview) + rebrand email copy | Agent: codex | 2026-05-23 | Commit: 9749e0e
 - [x] **AUTH-01 (Pass 2)**: cli_login picks up project-root .env + crypto type guard | Agent: codex | 2026-05-23 | Commit: b712472
 - [x] **LISTING-04 (Pass 2)**: Detail-Scrape Cap 5 -> 20 | Agent: codex | 2026-05-22 | Commit: d80d4a5
