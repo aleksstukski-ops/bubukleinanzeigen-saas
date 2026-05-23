@@ -12,11 +12,34 @@ from app.core.config import settings
 from app.db.session import get_db
 from app.models import User
 from app.models.user import SubscriptionPlan
+from app.shared.queue import queue as redis_queue
 
 log = logging.getLogger("api.billing")
 router = APIRouter(prefix="/billing", tags=["billing"])
 
 VALID_PLANS = {"starter", "pro", "business"}
+
+# Stripe occasionally delivers the same webhook twice — dedupe by event.id.
+# 24 h TTL is more than Stripe's retry window.
+_WEBHOOK_DEDUPE_TTL = 86_400
+_WEBHOOK_DEDUPE_KEY = "stripe:webhook:event:{event_id}"
+
+
+async def _webhook_already_processed(event_id: str) -> bool:
+    """Best-effort dedupe via Redis SET NX. Falls open on Redis errors."""
+    if not event_id:
+        return False
+    key = _WEBHOOK_DEDUPE_KEY.format(event_id=event_id)
+    try:
+        # Reuse the worker queue's Redis connection; cheap because it is the
+        # same client object the dispatcher already keeps warm.
+        conn = await redis_queue._conn()
+        result = await conn.set(key, "1", ex=_WEBHOOK_DEDUPE_TTL, nx=True)
+        # set(NX=True) returns True on first write, None when key already existed
+        return result is None
+    except Exception:
+        log.exception("Webhook dedupe Redis check failed for event %s", event_id)
+        return False
 
 
 def _plan_price_id(plan: str) -> str:
@@ -143,13 +166,20 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
         log.warning("Stripe webhook parse error: %s", exc)
         raise HTTPException(status_code=400, detail=str(exc))
 
+    event_id: str = event.get("id", "")
     event_type: str = event["type"]
-    log.info("Stripe webhook received: %s", event_type)
+    log.info("Stripe webhook received: %s (%s)", event_type, event_id)
+
+    if await _webhook_already_processed(event_id):
+        log.info("Skipping duplicate Stripe webhook %s", event_id)
+        return {"received": True, "duplicate": True}
 
     if event_type == "checkout.session.completed":
         await _handle_checkout_completed(event["data"]["object"], db)
     elif event_type in ("customer.subscription.updated", "customer.subscription.deleted"):
         await _handle_subscription_change(event["data"]["object"], db)
+    elif event_type == "invoice.payment_failed":
+        await _handle_payment_failed(event["data"]["object"], db)
 
     return {"received": True}
 
@@ -172,6 +202,23 @@ async def _handle_checkout_completed(session: dict, db: AsyncSession) -> None:
     user.subscription_status = "active"
     await db.commit()
     log.info("User %s upgraded to plan '%s' via checkout", user.id, plan)
+
+
+async def _handle_payment_failed(invoice: dict, db: AsyncSession) -> None:
+    """Flag the user when Stripe could not collect — keeps the plan active
+    (Stripe retries automatically) but surfaces a 'past_due' status the UI
+    can show alongside an email/push notification later."""
+    customer_id = invoice.get("customer")
+    if not customer_id:
+        return
+    result = await db.execute(select(User).where(User.stripe_customer_id == customer_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        log.warning("payment_failed: no user for Stripe customer %s", customer_id)
+        return
+    user.subscription_status = "past_due"
+    await db.commit()
+    log.warning("User %s payment failed (invoice %s)", user.id, invoice.get("id"))
 
 
 async def _handle_subscription_change(subscription: dict, db: AsyncSession) -> None:
