@@ -447,16 +447,21 @@ async def _handle_scrape_messages(job: Job, db: AsyncSession, session_manager: S
             # Push notification covers both brand-new conversations with unread > 0
             # AND existing conversations where unread_count grew since last scrape.
             new_unread = 0
+            triggering_items: list[dict] = []
             for item in scraped_items:
                 ka_id = item["kleinanzeigen_id"]
                 current_unread = int(item.get("unread_count") or 0)
                 if current_unread <= 0:
                     continue
                 previous_unread = previous_unread_by_ka_id.get(ka_id, 0)
+                delta = 0
                 if ka_id not in previous_unread_by_ka_id:
-                    new_unread += current_unread
+                    delta = current_unread
                 elif current_unread > previous_unread:
-                    new_unread += current_unread - previous_unread
+                    delta = current_unread - previous_unread
+                if delta > 0:
+                    new_unread += delta
+                    triggering_items.append(item)
             if new_unread > 0:
                 user_result = await db.execute(
                     select(User).join(KleinanzeigenAccount, KleinanzeigenAccount.user_id == User.id)
@@ -464,22 +469,51 @@ async def _handle_scrape_messages(job: Job, db: AsyncSession, session_manager: S
                 )
                 user = user_result.scalar_one_or_none()
                 if user:
-                    msg_text = f"{new_unread} neue Nachricht{'en' if new_unread > 1 else ''} auf {account.label}"
-                    if getattr(user, "notify_push_new_message", True):
-                        await send_push_to_user(
-                            db, user.id,
-                            title="Neue Nachricht",
-                            body=msg_text,
-                            url="/messages",
+                    # When a single conversation changed, show partner + preview;
+                    # otherwise a roll-up by account.
+                    if new_unread == 1 and len(triggering_items) == 1:
+                        single = triggering_items[0]
+                        partner = (single.get("partner_name") or "Unbekannt").strip() or "Unbekannt"
+                        preview = (single.get("last_message_preview") or "").strip()
+                        push_title = f"Neue Nachricht von {partner}"
+                        push_body = preview[:140] if preview else f"Auf {account.label}"
+                        email_subject = f"[BubuBay] Neue Nachricht von {partner}"
+                        email_html = (
+                            f"<p><strong>{partner}</strong> ({account.label})</p>"
+                            f"<p>{preview or 'Keine Vorschau verfuegbar.'}</p>"
+                            f"<p><a href='https://bububay.de/messages'>Jetzt ansehen</a></p>"
                         )
+                    else:
+                        push_title = "Neue Nachrichten"
+                        push_body = (
+                            f"{new_unread} neue Nachricht"
+                            f"{'en' if new_unread > 1 else ''} auf {account.label}"
+                        )
+                        email_subject = f"[BubuBay] {push_body}"
+                        email_html = (
+                            f"<p>{push_body}</p>"
+                            f"<p><a href='https://bububay.de/messages'>Jetzt ansehen</a></p>"
+                        )
+
+                    if getattr(user, "notify_push_new_message", True):
+                        try:
+                            await send_push_to_user(
+                                db, user.id,
+                                title=push_title,
+                                body=push_body,
+                                url="/messages",
+                            )
+                        except Exception as exc:
+                            # Push delivery must never break the scrape job
+                            log.warning("send_push_to_user failed for user %s: %s", user.id, exc)
                     if getattr(user, "notify_email_new_message", False):
                         import asyncio as _asyncio
                         from app.services.email import send_email as _send_email
                         _asyncio.ensure_future(asyncio.to_thread(
                             _send_email,
                             to=user.email,
-                            subject=f"[BubuKleinanzeigen] {msg_text}",
-                            body_html=f"<p>{msg_text}</p><p><a href='https://bubuanzeigen.de/messages'>Jetzt ansehen</a></p>",
+                            subject=email_subject,
+                            body_html=email_html,
                         ))
 
             return {"count": len(scraped_items), "valid": True}
