@@ -3,7 +3,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
- model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+ # env_file is tried in order — first hit wins. Covers both:
+ #   - docker (CWD = project root, ".env" matches)
+ #   - host cli_login (CWD = backend/, "../.env" matches)
+ model_config = SettingsConfigDict(env_file=(".env", "../.env"), extra="ignore")
 
  SECRET_KEY: str
  FERNET_KEY: str
