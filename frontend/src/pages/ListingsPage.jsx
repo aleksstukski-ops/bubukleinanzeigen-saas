@@ -445,7 +445,7 @@ export default function ListingsPage() {
                 <span className="text-sm font-medium text-blue-700">{selectedIds.size} ausgew{"ä"}hlt</span>
                 <button
                   type="button"
-                  className="btn-primary py-1 px-3 text-sm"
+                  className="btn-primary py-2 px-3 text-sm"
                   disabled={bulkLoading}
                   onClick={() => handleBulkAction("bump")}
                 >
@@ -453,7 +453,7 @@ export default function ListingsPage() {
                 </button>
                 <button
                   type="button"
-                  className="btn-secondary py-1 px-3 text-sm"
+                  className="btn-secondary py-2 px-3 text-sm"
                   disabled={bulkLoading}
                   onClick={() => setPriceChangeOpen((v) => !v)}
                 >
@@ -461,7 +461,7 @@ export default function ListingsPage() {
                 </button>
                 <button
                   type="button"
-                  className="btn-secondary py-1 px-3 text-sm"
+                  className="btn-secondary py-2 px-3 text-sm"
                   disabled={bulkLoading}
                   onClick={() => handleBulkAction("scrape_description")}
                   title="Beschreibung der ausgewaehlten Inserate frisch von Kleinanzeigen laden"
@@ -470,7 +470,7 @@ export default function ListingsPage() {
                 </button>
                 <button
                   type="button"
-                  className="btn-danger py-1 px-3 text-sm"
+                  className="btn-danger py-2 px-3 text-sm"
                   disabled={bulkLoading}
                   onClick={() => handleBulkAction("delete")}
                 >
@@ -489,7 +489,7 @@ export default function ListingsPage() {
                   <select
                     value={priceMode}
                     onChange={(e) => setPriceMode(e.target.value)}
-                    className="input py-1.5 text-sm"
+                    className="input py-2 text-sm"
                     disabled={bulkLoading}
                   >
                     <option value="percent_decrease">Prozent reduzieren (%)</option>
@@ -503,12 +503,12 @@ export default function ListingsPage() {
                     value={priceValue}
                     onChange={(e) => setPriceValue(e.target.value)}
                     placeholder={priceMode === "absolute" ? "z.B. 99" : "z.B. 10"}
-                    className="input py-1.5 text-sm"
+                    className="input py-2 text-sm"
                     disabled={bulkLoading}
                   />
                   <button
                     type="button"
-                    className="btn-primary py-1.5 px-3 text-sm"
+                    className="btn-primary py-2 px-3 text-sm"
                     disabled={bulkLoading || !priceValue}
                     onClick={handleBulkPriceChange}
                   >
@@ -544,7 +544,7 @@ export default function ListingsPage() {
                   type="checkbox"
                   checked={selectedIds.size === filteredListings.length && filteredListings.length > 0}
                   onChange={toggleSelectAll}
-                  className="h-4 w-4 rounded border-slate-300"
+                  className="h-5 w-5 rounded border-slate-300"
                 />
                 <span className="text-xs text-slate-500">Alle ausw{"\u00e4"}hlen</span>
               </div>
@@ -665,7 +665,7 @@ export default function ListingsPage() {
                 </select>
                 <button
                   type="button"
-                  className="btn-secondary py-1.5 px-3 text-sm"
+                  className="btn-secondary py-2 px-3 text-sm"
                   onClick={() => setTemplatesPanelOpen((v) => !v)}
                 >
                   {templatesPanelOpen ? "Schliessen" : "Verwalten"}
@@ -684,7 +684,7 @@ export default function ListingsPage() {
                     />
                     <button
                       type="button"
-                      className="btn-primary py-1.5 px-3 text-sm"
+                      className="btn-primary py-2 px-3 text-sm"
                       disabled={templateSaving || !templateName.trim()}
                       onClick={saveAsTemplate}
                     >

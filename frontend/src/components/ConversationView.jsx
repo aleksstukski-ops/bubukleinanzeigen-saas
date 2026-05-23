@@ -45,7 +45,7 @@ export default function ConversationView({
   return (
     <section
       className="flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white"
-      style={{ height: "calc(100dvh - 12rem)" }}
+      style={{ height: "calc(100dvh - 16rem)" }}
     >
       <div className="border-b border-slate-200 bg-white p-4">
         <div className="flex items-start justify-between gap-3">
@@ -66,9 +66,9 @@ export default function ConversationView({
             type="button"
             onClick={onMarkRead}
             disabled={markingRead || conversation.unread_count === 0}
-            className="btn-secondary"
+            className="btn-secondary shrink-0 text-xs sm:text-sm"
           >
-            {markingRead ? "Markiert..." : "Als gelesen markieren"}
+            {markingRead ? "..." : "Gelesen"}
           </button>
         </div>
       </div>
@@ -110,7 +110,7 @@ export default function ConversationView({
           <textarea
             value={replyBody}
             onChange={(event) => onReplyBodyChange(event.target.value)}
-            rows={4}
+            rows={3}
             placeholder="Antwort schreiben"
             maxLength={4000}
             className="input"
