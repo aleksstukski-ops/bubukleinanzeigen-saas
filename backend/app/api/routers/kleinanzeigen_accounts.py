@@ -11,6 +11,37 @@ from app.services.jobs import enqueue_job
 router = APIRouter(prefix="/ka-accounts", tags=["kleinanzeigen-accounts"])
 
 
+@router.get("/health-summary")
+async def health_summary(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Lightweight roll-up for the layout-level banner.
+
+    Returns counts of accounts that need user attention (session expired
+    or pending login) plus a short list of their labels so the banner
+    can name them. Designed to be cheap enough for 15 s polling.
+    """
+    result = await db.execute(
+        select(KleinanzeigenAccount.id, KleinanzeigenAccount.label, KleinanzeigenAccount.status)
+        .where(KleinanzeigenAccount.user_id == user.id)
+        .where(KleinanzeigenAccount.status.in_([
+            AccountStatus.SESSION_EXPIRED.value,
+            AccountStatus.PENDING_LOGIN.value,
+        ]))
+        .order_by(KleinanzeigenAccount.created_at)
+    )
+    rows = result.all()
+    needs_login = [
+        {"id": row.id, "label": row.label, "status": row.status}
+        for row in rows
+    ]
+    return {
+        "needs_login_count": len(needs_login),
+        "needs_login": needs_login,
+    }
+
+
 @router.get("", response_model=list[KleinanzeigenAccountOut])
 async def list_accounts(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     accounts_result = await db.execute(

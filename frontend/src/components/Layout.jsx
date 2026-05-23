@@ -84,6 +84,8 @@ export default function Layout() {
   const { user, logout, sessionExpired, dismissSessionExpired } = useAuth();
   const [unreadTotal, setUnreadTotal] = useState(0);
   const [pollerStarted, setPollerStarted] = useState(false);
+  const [kaNeedsLogin, setKaNeedsLogin] = useState([]);
+  const [kaBannerDismissedIds, setKaBannerDismissedIds] = useState("");
   const pollerRef = useRef(null);
 
   const fetchUnread = async () => {
@@ -96,16 +98,34 @@ export default function Layout() {
     }
   };
 
+  const fetchKaHealth = async () => {
+    try {
+      const response = await api.get("/ka-accounts/health-summary");
+      const items = response?.data?.needs_login || [];
+      setKaNeedsLogin(Array.isArray(items) ? items : []);
+    } catch (error) {
+      // silent — banner is non-critical
+    }
+  };
+
   if (!pollerStarted && user) {
     setPollerStarted(true);
     fetchUnread();
+    fetchKaHealth();
     pollerRef.current = window.setInterval(() => {
       if (document.hidden) return;
       fetchUnread();
+      fetchKaHealth();
     }, 15000);
   }
 
   const badges = { unread: unreadTotal };
+
+  // Compute a stable signature of currently-affected accounts so dismiss
+  // applies until the SET of affected accounts changes; a fresh expiry
+  // re-shows the banner without further polling logic.
+  const kaSignature = kaNeedsLogin.map((a) => a.id).sort((a, b) => a - b).join(",");
+  const showKaBanner = kaNeedsLogin.length > 0 && kaSignature !== kaBannerDismissedIds;
 
   return (
     <div className="flex min-h-screen" style={{ background: "var(--bg)" }}>
@@ -121,8 +141,34 @@ export default function Layout() {
           </button>
         </div>
       )}
+      {showKaBanner && !sessionExpired && (
+        <div className="fixed inset-x-0 top-0 z-40 flex items-center justify-between gap-3 bg-blue-600 px-4 py-3 text-sm font-medium text-white shadow-md">
+          <span className="min-w-0 truncate">
+            {'🔐'}{' '}
+            {kaNeedsLogin.length === 1
+              ? `Konto "${kaNeedsLogin[0].label}" wird aktualisiert — bitte neu einloggen.`
+              : `${kaNeedsLogin.length} Konten brauchen einen Re-Login.`}
+          </span>
+          <div className="flex shrink-0 items-center gap-2">
+            <NavLink
+              to="/accounts"
+              className="rounded-md bg-white/20 px-3 py-1 text-sm font-semibold hover:bg-white/30 focus:outline-none focus:ring-2 focus:ring-white"
+            >
+              Zu Konten
+            </NavLink>
+            <button
+              type="button"
+              onClick={() => setKaBannerDismissedIds(kaSignature)}
+              aria-label="Banner schliessen"
+              className="rounded-md bg-white/10 px-2 py-1 text-sm font-semibold hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white"
+            >
+              {'×'}
+            </button>
+          </div>
+        </div>
+      )}
       <aside
-        className={["hidden w-60 flex-shrink-0 border-r md:flex md:flex-col", sessionExpired ? "pt-12" : ""].join(" ")}
+        className={["hidden w-60 flex-shrink-0 border-r md:flex md:flex-col", (sessionExpired || showKaBanner) ? "pt-12" : ""].join(" ")}
         style={{ background: "var(--surface)", borderColor: "var(--border)" }}
       >
         <div className="border-b px-4 py-5" style={{ borderColor: "var(--border)" }}>
@@ -137,7 +183,7 @@ export default function Layout() {
         </nav>
       </aside>
 
-      <div className={["flex min-w-0 flex-1 flex-col", sessionExpired ? "pt-12" : ""].join(" ")}>
+      <div className={["flex min-w-0 flex-1 flex-col", (sessionExpired || showKaBanner) ? "pt-12" : ""].join(" ")}>
         <header
           className="sticky top-0 z-20 border-b backdrop-blur"
           style={{ background: "color-mix(in srgb, var(--surface) 95%, transparent)", borderColor: "var(--border)" }}
