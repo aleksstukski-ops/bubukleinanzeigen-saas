@@ -21,6 +21,9 @@ import LandingPage from "./pages/LandingPage";
 import AutoReplyPage from "./pages/AutoReplyPage";
 import WatchesPage from "./pages/WatchesPage";
 import AiCreatePage from "./pages/AiCreatePage";
+import AutoBumpPage from "./pages/AutoBumpPage";
+import NotificationsPage from "./pages/NotificationsPage";
+import SupportPage from "./pages/SupportPage";
 
 // Root route: show LandingPage to anonymous visitors, send signed-in
 // users straight to their dashboard. While the auth check is in flight
@@ -61,6 +64,9 @@ export default function App() {
               <Route path="/auto-replies" element={<AutoReplyPage />} />
               <Route path="/watches" element={<WatchesPage />} />
               <Route path="/ai-create" element={<AiCreatePage />} />
+              <Route path="/auto-bump" element={<AutoBumpPage />} />
+              <Route path="/notifications" element={<NotificationsPage />} />
+              <Route path="/support" element={<SupportPage />} />
             </Route>
           </Route>
 

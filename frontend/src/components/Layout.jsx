@@ -14,11 +14,13 @@ const navItems = [
   { to: "/auto-replies", label: "Auto-Antworten", icon: "⚡" },
   { to: "/watches", label: "Kategorie-Monitor", icon: "🔔" },
   { to: "/ai-create", label: "KI-Erstellen", icon: "🪄" },
+  { to: "/auto-bump", label: "Auto-Bump", icon: "⏱️" },
+  { to: "/notifications", label: "Mitteilungen", icon: "📨" },
+  { to: "/support", label: "Support", icon: "💬" },
 ];
 
 // Mobile bottom nav shows only the 5 most important items (375px limit).
-// The new pages (AutoReplies/Watches/AiCreate) live in the desktop
-// sidebar only — adding them here would break the 375 px overflow guard.
+// Everything past the first five lives in the desktop sidebar only.
 const mobileNavItems = navItems.slice(0, 5);
 
 const adminNavItem = { to: "/admin", label: "Admin", icon: "🛡️" };
