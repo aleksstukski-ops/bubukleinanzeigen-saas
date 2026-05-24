@@ -1,7 +1,28 @@
 import { useMemo, useState } from "react";
 import api from "../lib/api";
+import { LineChart, Line, ResponsiveContainer } from "recharts";
 import ListingDetailModal from "../components/ListingDetailModal";
 import ListingEditModal from "../components/ListingEditModal";
+
+function Sparkline({ data }) {
+  if (!data || data.length < 2) return null;
+  return (
+    <div className="inline-block align-middle" style={{ width: 60, height: 20 }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
+          <Line
+            type="monotone"
+            dataKey="v"
+            stroke="#3b82f6"
+            strokeWidth={1.5}
+            dot={false}
+            isAnimationActive={false}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
 
 function getErrorMessage(error) {
   return error?.response?.data?.detail || error?.message || "Aktion fehlgeschlagen.";
@@ -74,6 +95,31 @@ export default function ListingsPage() {
   const [templatesPanelOpen, setTemplatesPanelOpen] = useState(false);
   const [templateName, setTemplateName] = useState("");
   const [templateSaving, setTemplateSaving] = useState(false);
+  const [sparklineData, setSparklineData] = useState({});
+
+  const loadSparklines = async (allListings) => {
+    // Load stats for top 20 listings by views — keep UI fast
+    const top = [...allListings]
+      .sort((a, b) => Number(b.view_count || 0) - Number(a.view_count || 0))
+      .slice(0, 20);
+    const results = {};
+    const fetches = top.map(async (listing) => {
+      try {
+        const res = await api.get(`/listings/${listing.kleinanzeigen_id}/stats`);
+        const points = (res.data || [])
+          .sort((a, b) => new Date(a.scraped_at) - new Date(b.scraped_at))
+          .slice(-7)
+          .map((s) => ({ v: Number(s.view_count || 0) }));
+        if (points.length >= 2) {
+          results[listing.kleinanzeigen_id] = points;
+        }
+      } catch {
+        // silent — sparkline is non-critical
+      }
+    });
+    await Promise.all(fetches);
+    setSparklineData(results);
+  };
 
   const handleExportCsv = () => {
     if (filteredListings.length === 0) return;
@@ -118,6 +164,8 @@ export default function ListingsPage() {
         accountLabel: accountLabelById.get(listing.account_id) || `Konto ${listing.account_id}`,
       }));
       setListings(allListings);
+      // Fire sparkline loading in the background — non-blocking
+      loadSparklines(allListings);
     } catch (error) {
       setPageError(getErrorMessage(error));
     } finally {
@@ -623,7 +671,7 @@ export default function ListingsPage() {
                         </div>
                         <div className="mt-3 grid gap-2 text-sm text-slate-600 sm:grid-cols-3">
                           <div>{"💰"} {listing.price || "Kein Preis"}</div>
-                          <div>Views: {formatViews(listing.view_count)}</div>
+                          <div className="flex items-center gap-1">Views: {formatViews(listing.view_count)} <Sparkline data={sparklineData[listing.kleinanzeigen_id]} /></div>
                           <div>{"❤️"} {listing.bookmark_count || 0}</div>
                           <div>Sync: {formatDate(listing.last_scraped_at)}</div>
                         </div>
