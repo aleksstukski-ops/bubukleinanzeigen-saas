@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from sqlalchemy import select
@@ -635,9 +635,29 @@ async def _maybe_trigger_auto_replies(
     if not rules:
         return
 
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=1)
+    recent_reply_result = await db.execute(
+        select(Job.id).where(
+            Job.account_id == account.id,
+            Job.type == _JobType.SEND_MESSAGE.value,
+            Job.created_at >= cutoff,
+            Job.payload.contains({
+                "conversation_id": conversation.id,
+                "auto_reply": True,
+            }),
+        ).limit(1)
+    )
+    if recent_reply_result.scalar_one_or_none() is not None:
+        return
+
     for message in fresh_incoming:
         body = (message.get("body") or "").lower()
         if not body:
+            continue
+        if message.get("direction") != "incoming":
+            continue
+        sender_name = (message.get("sender_name") or "").strip().lower()
+        if sender_name in {"du", "ich", "me", "self"}:
             continue
         for rule in rules:
             if (rule.trigger_text or "").lower() in body:
@@ -649,10 +669,12 @@ async def _maybe_trigger_auto_replies(
                         "conversation_id": conversation.id,
                         "kleinanzeigen_conversation_id": conversation.kleinanzeigen_id,
                         "body": rule.reply_text,
+                        "auto_reply": True,
                     },
                     priority=4,
+                    deduplicate=False,
                 )
-                break  # one auto-reply per incoming message
+                return  # max one auto-reply per conversation per hour
 
 
 async def _handle_send_message(job: Job, db: AsyncSession, session_manager: SessionManager) -> dict[str, Any]:

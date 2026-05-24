@@ -21,6 +21,7 @@ import LandingPage from "./pages/LandingPage";
 import AutoReplyPage from "./pages/AutoReplyPage";
 import WatchesPage from "./pages/WatchesPage";
 import AiCreatePage from "./pages/AiCreatePage";
+import NotFoundPage from "./pages/NotFoundPage";
 import AutoBumpPage from "./pages/AutoBumpPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import SupportPage from "./pages/SupportPage";
@@ -70,7 +71,7 @@ export default function App() {
             </Route>
           </Route>
 
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
         <CookieBanner />
       </AuthProvider>
