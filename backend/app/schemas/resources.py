@@ -176,3 +176,40 @@ class JobOut(BaseModel):
     created_at: datetime
     started_at: datetime | None
     finished_at: datetime | None
+
+
+class AutoReplyRuleIn(BaseModel):
+    account_id: int | None = None  # None = applies to all accounts of the user
+    trigger_text: str = Field(min_length=1, max_length=200)
+    reply_text: str = Field(min_length=1, max_length=4000)
+    is_active: bool = True
+
+
+class AutoReplyRuleOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    account_id: int | None
+    trigger_text: str
+    reply_text: str
+    is_active: bool
+    created_at: datetime
+
+
+class CategoryWatchIn(BaseModel):
+    search_query: str = Field(min_length=1, max_length=200)
+    category: str | None = Field(default=None, max_length=120)
+    notify_push: bool = True
+    is_active: bool = True
+
+
+class CategoryWatchOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    search_query: str
+    category: str | None
+    notify_push: bool
+    is_active: bool
+    last_checked_at: datetime | None
+    created_at: datetime

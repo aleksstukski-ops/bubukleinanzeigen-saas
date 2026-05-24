@@ -576,9 +576,83 @@ async def _handle_scrape_conversation(job: Job, db: AsyncSession, session_manage
             account.last_scraped_at = now
             await db.commit()
 
+            # Auto-reply: brand-new incoming messages whose body matches a rule
+            # get a SEND_MESSAGE job enqueued. We only fire on messages that
+            # were not in existing_by_ka_id before this scrape, so re-scraping
+            # a conversation does not re-trigger replies.
+            await _maybe_trigger_auto_replies(
+                db,
+                account=account,
+                conversation=conversation,
+                fresh_incoming=[
+                    item for item in scraped_items
+                    if item.get("direction") == "incoming"
+                    and item["kleinanzeigen_id"] not in existing_by_ka_id
+                ],
+            )
+
             return {"count": len(scraped_items), "valid": True}
         finally:
             await session_manager.close_account(account.id, headless=True)
+
+
+async def _maybe_trigger_auto_replies(
+    db: AsyncSession,
+    *,
+    account: KleinanzeigenAccount,
+    conversation: Conversation,
+    fresh_incoming: list[dict],
+) -> None:
+    """Enqueue SEND_MESSAGE jobs for any active rule that matches a new message.
+
+    Match rules:
+      - rule must belong to the account owner (user_id)
+      - rule.account_id is either NULL (all accounts) or equals account.id
+      - rule.is_active is True
+      - case-insensitive substring match: trigger_text in message.body
+
+    Each fresh incoming message can fire at most one auto-reply (the first
+    matching rule in created_at-asc order) — keeps the inbox from flooding
+    when a user wrote two overlapping rules.
+    """
+    if not fresh_incoming:
+        return
+
+    # Import locally to avoid widening the module-level dependency surface;
+    # AutoReplyRule is already in app.models via __init__ re-export.
+    from app.models import AutoReplyRule
+    from app.services.jobs import enqueue_job as _enqueue_job
+    from app.models import JobType as _JobType
+
+    rules_result = await db.execute(
+        select(AutoReplyRule).where(
+            AutoReplyRule.user_id == account.user_id,
+            AutoReplyRule.is_active.is_(True),
+            (AutoReplyRule.account_id.is_(None)) | (AutoReplyRule.account_id == account.id),
+        ).order_by(AutoReplyRule.created_at.asc())
+    )
+    rules = rules_result.scalars().all()
+    if not rules:
+        return
+
+    for message in fresh_incoming:
+        body = (message.get("body") or "").lower()
+        if not body:
+            continue
+        for rule in rules:
+            if (rule.trigger_text or "").lower() in body:
+                await _enqueue_job(
+                    db,
+                    _JobType.SEND_MESSAGE,
+                    account_id=account.id,
+                    payload={
+                        "conversation_id": conversation.id,
+                        "kleinanzeigen_conversation_id": conversation.kleinanzeigen_id,
+                        "body": rule.reply_text,
+                    },
+                    priority=4,
+                )
+                break  # one auto-reply per incoming message
 
 
 async def _handle_send_message(job: Job, db: AsyncSession, session_manager: SessionManager) -> dict[str, Any]:
@@ -820,6 +894,96 @@ async def _handle_bump_listing(job: Job, db: AsyncSession, session_manager: Sess
             await session_manager.close_account(account.id, headless=True)
 
 
+async def _handle_check_category(job: Job, db: AsyncSession, session_manager: SessionManager) -> dict[str, Any]:
+    """Snapshot a Kleinanzeigen public search and push when new results appear.
+
+    Payload: {"watch_id": int}. Reads CategoryWatch, navigates to the public
+    search URL (no login required — uses a fresh anonymous Playwright context),
+    extracts the visible listing IDs from search-result tiles, and diffs
+    against watch.last_seen_listing_ids (a JSON-encoded list of strings).
+
+    First run: just records the current snapshot, no push (otherwise the
+    very first check would notify about every listing on the page).
+    """
+    import json as _json
+    from app.models import CategoryWatch as _CategoryWatch, User as _User
+    from app.scraper.selectors import LISTING_ID_REGEX as _LISTING_ID_REGEX
+
+    watch_id_raw = job.payload.get("watch_id")
+    if watch_id_raw is None:
+        raise JobError("CHECK_CATEGORY payload is missing watch_id", recoverable=False)
+    try:
+        watch_id = int(watch_id_raw)
+    except (TypeError, ValueError) as exc:
+        raise JobError("CHECK_CATEGORY watch_id must be an integer", recoverable=False) from exc
+
+    result = await db.execute(select(_CategoryWatch).where(_CategoryWatch.id == watch_id))
+    watch = result.scalar_one_or_none()
+    if watch is None:
+        raise JobError(f"CategoryWatch {watch_id} not found", recoverable=False)
+    if not watch.is_active:
+        return {"skipped": True, "reason": "watch inactive"}
+
+    from urllib.parse import quote
+    search_url = f"https://www.kleinanzeigen.de/s-suchanfrage.html?keywords={quote(watch.search_query)}"
+
+    # Anonymous browser context — public search does not need our session
+    page = await session_manager.get_page(0, headless=True, storage_state=None, force_new=True)
+    try:
+        await page.goto(search_url, wait_until="domcontentloaded")
+        await page.wait_for_selector("body", timeout=10000)
+
+        anchors = await page.query_selector_all('a[href*="/s-anzeige/"]')
+        seen_ids: list[str] = []
+        for anchor in anchors:
+            href = await anchor.get_attribute("href")
+            if not href:
+                continue
+            match = _LISTING_ID_REGEX.search(href)
+            if match is None:
+                continue
+            ka_id = match.group(1)
+            if ka_id not in seen_ids:
+                seen_ids.append(ka_id)
+            if len(seen_ids) >= 30:
+                break
+    finally:
+        await session_manager.close_account(0, headless=True)
+
+    now = datetime.now(timezone.utc)
+    previous_raw = watch.last_seen_listing_ids
+    previous_ids: list[str] = []
+    if previous_raw:
+        try:
+            parsed = _json.loads(previous_raw)
+            if isinstance(parsed, list):
+                previous_ids = [str(x) for x in parsed]
+        except _json.JSONDecodeError:
+            log.warning("CategoryWatch %s: previous snapshot JSON invalid, resetting", watch.id)
+
+    new_ids = [i for i in seen_ids if i not in previous_ids] if previous_ids else []
+
+    watch.last_seen_listing_ids = _json.dumps(seen_ids)
+    watch.last_checked_at = now
+    await db.commit()
+
+    if new_ids and watch.notify_push:
+        user_result = await db.execute(select(_User).where(_User.id == watch.user_id))
+        user = user_result.scalar_one_or_none()
+        if user is not None and getattr(user, "notify_push_new_message", True):
+            try:
+                await send_push_to_user(
+                    db, user.id,
+                    title=f"Neue Treffer fuer '{watch.search_query}'",
+                    body=f"{len(new_ids)} neue{'r Treffer' if len(new_ids) == 1 else ' Treffer'} gefunden.",
+                    url="/watches",
+                )
+            except Exception as exc:
+                log.warning("CategoryWatch push failed for watch %s: %s", watch.id, exc)
+
+    return {"seen": len(seen_ids), "new": len(new_ids), "first_run": not previous_ids}
+
+
 HANDLERS = {
     JobType.START_LOGIN.value: _handle_start_login,
     JobType.SCRAPE_LISTINGS.value: _handle_scrape_listings,
@@ -832,6 +996,7 @@ HANDLERS = {
     JobType.DELETE_LISTING.value: _handle_delete_listing,
     JobType.BUMP_LISTING.value: _handle_bump_listing,
     JobType.VERIFY_SESSION.value: _handle_verify_session,
+    JobType.CHECK_CATEGORY.value: _handle_check_category,
 }
 
 

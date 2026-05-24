@@ -28,6 +28,7 @@ class JobType(str, Enum):
     DELETE_LISTING = "delete_listing"
     BUMP_LISTING = "bump_listing"
     VERIFY_SESSION = "verify_session"
+    CHECK_CATEGORY = "check_category"
 
 
 class Job(Base):
