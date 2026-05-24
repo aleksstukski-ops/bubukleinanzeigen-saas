@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from "./hooks/useAuth";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import CookieBanner from "./components/CookieBanner";
+import ErrorBoundary from "./components/ErrorBoundary";
 import LoginPage from "./pages/LoginPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
@@ -39,42 +40,44 @@ function RootRoute() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <Routes>
-          <Route path="/" element={<RootRoute />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
+    <ErrorBoundary>
+      <BrowserRouter>
+        <AuthProvider>
+          <Routes>
+            <Route path="/" element={<RootRoute />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-          {/* Public legal pages */}
-          <Route path="/impressum" element={<ImpressumPage />} />
-          <Route path="/datenschutz" element={<DatenschutzPage />} />
-          <Route path="/agb" element={<AgbPage />} />
+            {/* Public legal pages */}
+            <Route path="/impressum" element={<ImpressumPage />} />
+            <Route path="/datenschutz" element={<DatenschutzPage />} />
+            <Route path="/agb" element={<AgbPage />} />
 
-          <Route element={<ProtectedRoute />}>
-            <Route element={<Layout />}>
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/accounts" element={<AccountsPage />} />
-              <Route path="/listings" element={<ListingsPage />} />
-              <Route path="/messages" element={<MessagesPage />} />
-              <Route path="/billing" element={<BillingPage />} />
-              <Route path="/admin" element={<AdminPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/auto-replies" element={<AutoReplyPage />} />
-              <Route path="/watches" element={<WatchesPage />} />
-              <Route path="/ai-create" element={<AiCreatePage />} />
-              <Route path="/auto-bump" element={<AutoBumpPage />} />
-              <Route path="/notifications" element={<NotificationsPage />} />
-              <Route path="/support" element={<SupportPage />} />
+            <Route element={<ProtectedRoute />}>
+              <Route element={<Layout />}>
+                <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/accounts" element={<AccountsPage />} />
+                <Route path="/listings" element={<ListingsPage />} />
+                <Route path="/messages" element={<MessagesPage />} />
+                <Route path="/billing" element={<BillingPage />} />
+                <Route path="/admin" element={<AdminPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/auto-replies" element={<AutoReplyPage />} />
+                <Route path="/watches" element={<WatchesPage />} />
+                <Route path="/ai-create" element={<AiCreatePage />} />
+                <Route path="/auto-bump" element={<AutoBumpPage />} />
+                <Route path="/notifications" element={<NotificationsPage />} />
+                <Route path="/support" element={<SupportPage />} />
+              </Route>
             </Route>
-          </Route>
 
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
-        <CookieBanner />
-      </AuthProvider>
-    </BrowserRouter>
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+          <CookieBanner />
+        </AuthProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }
