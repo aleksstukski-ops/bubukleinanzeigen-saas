@@ -25,6 +25,10 @@ Letzte Aktualisierung: 2026-05-22
 <!-- - [ ] **TASK-ID**: Beschreibung | Agent: [codex/gpt/opus] | Seit: YYYY-MM-DD | Branch: xxx -->
 
 ## DONE
+- [x] **WATCH-01**: CategoryWatch Backend + CHECK_CATEGORY Job | Agent: codex | 2026-05-24 | Commit: 58fb0ab
+- [x] **REPLY-01**: AutoReplyRule Backend + dispatcher hook | Agent: codex | 2026-05-24 | Commit: 58fb0ab
+- [x] **CORS-01**: ALLOWED_ORIGINS + FRONTEND_URL auf bububay.de | Agent: codex | 2026-05-24 | Commit: 8df9c58
+- [x] **ROUTE-01**: Root "/" -> LandingPage anon / Dashboard signed-in | Agent: codex | 2026-05-24 | Commit: 58d9450
 - [x] **UX-02**: Session-Banner mit /ka-accounts/health-summary Polling | Agent: codex | 2026-05-23 | Commit: 0c8cffe
 - [x] **A5 (Pass 2)**: Dedizierter POST /listings/bulk-price Endpoint (signed-value percent) | Agent: codex | 2026-05-23 | Commit: ac63140
 - [x] **A3 (Pass 2)**: Richer push body (partner+preview) + rebrand email copy | Agent: codex | 2026-05-23 | Commit: 9749e0e
