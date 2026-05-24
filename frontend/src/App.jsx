@@ -1,5 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import { AuthProvider } from "./hooks/useAuth";
+import { AuthProvider, useAuth } from "./hooks/useAuth";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import CookieBanner from "./components/CookieBanner";
@@ -19,12 +19,23 @@ import DatenschutzPage from "./pages/DatenschutzPage";
 import AgbPage from "./pages/AgbPage";
 import LandingPage from "./pages/LandingPage";
 
+// Root route: show LandingPage to anonymous visitors, send signed-in
+// users straight to their dashboard. While the auth check is in flight
+// we render LandingPage so the public marketing page is the visible
+// fallback (cheaper than a spinner on the most common cold-load path).
+function RootRoute() {
+  const { user, loading } = useAuth();
+  if (loading) return <LandingPage />;
+  if (user) return <Navigate to="/dashboard" replace />;
+  return <LandingPage />;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          <Route path="/" element={<LandingPage />} />
+          <Route path="/" element={<RootRoute />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -47,7 +58,7 @@ export default function App() {
             </Route>
           </Route>
 
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <CookieBanner />
       </AuthProvider>
