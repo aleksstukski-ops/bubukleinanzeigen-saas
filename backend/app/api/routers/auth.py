@@ -1,5 +1,8 @@
+import asyncio
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from app.services.email import send_email
+from app.services.email_templates import welcome_email
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy import select
@@ -24,6 +27,14 @@ async def register(request: Request, data: UserRegisterIn, db: AsyncSession = De
     db.add(user)
     await db.commit()
     await db.refresh(user)
+    asyncio.create_task(
+        asyncio.to_thread(
+            send_email,
+            to=user.email,
+            subject="Willkommen bei BubuBay",
+            body_html=welcome_email(user.full_name or user.email),
+        )
+    )
     return TokenPair(access_token=create_access_token(user.id), refresh_token=create_refresh_token(user.id))
 
 

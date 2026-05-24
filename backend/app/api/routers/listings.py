@@ -1,9 +1,10 @@
 import csv
 import io
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,6 +28,12 @@ from app.services.jobs import enqueue_job
 
 router = APIRouter(prefix="/listings", tags=["listings"])
 STALE_SECONDS = 120
+
+
+class AutoBumpScheduleIn(BaseModel):
+    account_id: int
+    listing_id: str = Field(min_length=1, max_length=64)
+    interval_hours: int = Field(ge=24, le=720, multiple_of=24)
 
 
 async def _get_account_for_user(
@@ -512,6 +519,68 @@ async def set_bump_schedule(
     else:
         listing.next_bump_at = None
 
+    await db.commit()
+    await db.refresh(listing)
+    return listing
+
+
+@router.get("/auto-bump", response_model=list[ListingOut])
+async def list_auto_bump_schedules(
+    account_id: int | None = Query(None),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    query = (
+        select(Listing)
+        .join(KleinanzeigenAccount, KleinanzeigenAccount.id == Listing.account_id)
+        .where(
+            KleinanzeigenAccount.user_id == user.id,
+            Listing.bump_interval_days.is_not(None),
+        )
+        .order_by(Listing.next_bump_at.asc().nullslast(), Listing.id.desc())
+    )
+
+    if account_id is not None:
+        query = query.where(Listing.account_id == account_id)
+
+    result = await db.execute(query)
+    return result.scalars().all()
+
+
+@router.post("/auto-bump", response_model=ListingOut)
+async def create_auto_bump_schedule(
+    payload: AutoBumpScheduleIn,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    account = await _get_account_for_user(db, account_id=payload.account_id, user_id=user.id)
+    listing = await _get_listing_for_user(db, kleinanzeigen_id=payload.listing_id, user_id=user.id)
+
+    if listing.account_id != account.id:
+        raise HTTPException(status_code=400, detail="Listing does not belong to account")
+
+    listing.bump_interval_days = payload.interval_hours // 24
+    listing.next_bump_at = datetime.now(timezone.utc) + timedelta(hours=payload.interval_hours)
+    await db.commit()
+    await db.refresh(listing)
+    return listing
+
+
+@router.delete("/auto-bump", response_model=ListingOut)
+async def delete_auto_bump_schedule(
+    listing_id: str = Query(..., min_length=1, max_length=64),
+    account_id: int = Query(...),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    account = await _get_account_for_user(db, account_id=account_id, user_id=user.id)
+    listing = await _get_listing_for_user(db, kleinanzeigen_id=listing_id, user_id=user.id)
+
+    if listing.account_id != account.id:
+        raise HTTPException(status_code=400, detail="Listing does not belong to account")
+
+    listing.bump_interval_days = None
+    listing.next_bump_at = None
     await db.commit()
     await db.refresh(listing)
     return listing
