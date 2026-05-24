@@ -11,6 +11,7 @@ from slowapi.util import get_remote_address
 from app.core.config import settings
 from app.api.routers import (
     admin,
+    ai_listings,
     auth,
     auto_replies,
     billing,
@@ -62,6 +63,7 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(billing.router, prefix="/api")
 app.include_router(push.router, prefix="/api")
 app.include_router(kleinanzeigen_accounts.router, prefix="/api")
+app.include_router(ai_listings.router, prefix="/api")
 app.include_router(jobs.router, prefix="/api")
 app.include_router(listings.router, prefix="/api")
 app.include_router(messages.router, prefix="/api")
