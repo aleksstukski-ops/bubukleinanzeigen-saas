@@ -39,7 +39,7 @@ class Settings(BaseSettings):
  # VAPID (Web Push)
  VAPID_PRIVATE_KEY: str = ""
  VAPID_PUBLIC_KEY: str = ""
- VAPID_SUBJECT: str = "mailto:admin@bubuanzeigen.de"
+ VAPID_SUBJECT: str = "mailto:admin@bububay.de"
 
  # Stripe
  STRIPE_SECRET_KEY: str = ""
@@ -47,7 +47,7 @@ class Settings(BaseSettings):
  STRIPE_PRICE_STARTER: str = ""
  STRIPE_PRICE_PRO: str = ""
  STRIPE_PRICE_BUSINESS: str = ""
- FRONTEND_URL: str = "https://bubuanzeigen.de"
+ FRONTEND_URL: str = "https://bububay.de"
 
  @property
  def allowed_origins_list(self):
