@@ -38,6 +38,36 @@ function getStatusBadgeClass(status) {
   return "bg-slate-100 text-slate-700 border border-slate-200";
 }
 
+// Visual + label map per activity action. Falls back to a neutral
+// dot/grey for kinds the backend may add later.
+const ACTIVITY_META = {
+  login:          { icon: "🔐", color: "rgb(37 99 235)",  label: "Login" },
+  session_renew:  { icon: "🔄", color: "rgb(37 99 235)",  label: "Session erneuert" },
+  bump:           { icon: "⏱️", color: "rgb(16 185 129)", label: "Bump" },
+  delete:         { icon: "🗑️", color: "rgb(220 38 38)",  label: "Geloescht" },
+  update:         { icon: "📝", color: "rgb(124 58 237)", label: "Aktualisiert" },
+  create:         { icon: "➕", color: "rgb(16 185 129)", label: "Erstellt" },
+  new_message:    { icon: "💬", color: "rgb(37 99 235)",  label: "Neue Nachricht" },
+  reply_sent:     { icon: "↗️", color: "rgb(37 99 235)",  label: "Antwort gesendet" },
+  watch_hit:      { icon: "🔔", color: "rgb(225 29 72)",  label: "Treffer" },
+  payment_failed: { icon: "💳", color: "rgb(220 38 38)",  label: "Zahlung fehlgeschlagen" },
+};
+
+function activityMeta(action) {
+  return ACTIVITY_META[action] || { icon: "•", color: "rgb(100 116 139)", label: String(action || "Aktion") };
+}
+
+function formatRelative(value) {
+  if (!value) return "—";
+  const then = new Date(value).getTime();
+  if (!Number.isFinite(then)) return "—";
+  const diff = Math.max(0, Math.round((Date.now() - then) / 1000));
+  if (diff < 60) return `vor ${diff}s`;
+  if (diff < 3600) return `vor ${Math.round(diff / 60)} Min`;
+  if (diff < 86400) return `vor ${Math.round(diff / 3600)} Std`;
+  return `vor ${Math.round(diff / 86400)} Tagen`;
+}
+
 export default function DashboardPage() {
   const { user, refreshUser } = useAuth();
   const push = usePushNotifications();
@@ -54,6 +84,8 @@ export default function DashboardPage() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [topListingsChart, setTopListingsChart] = useState([]);
   const [viewsByAccount, setViewsByAccount] = useState([]);
+  const [activity, setActivity] = useState(null);
+  const [activityError, setActivityError] = useState("");
 
   const loadAccounts = async () => {
     setLoadingAccounts(true);
@@ -100,10 +132,23 @@ export default function DashboardPage() {
     }
   };
 
+  const loadActivity = async () => {
+    setActivityError("");
+    try {
+      const res = await api.get("/activity");
+      setActivity(Array.isArray(res.data) ? res.data.slice(0, 15) : []);
+    } catch (error) {
+      // Endpoint may not exist yet — surface a soft message, keep dashboard usable.
+      setActivity([]);
+      setActivityError(getErrorMessage(error));
+    }
+  };
+
   if (!loaded) {
     setLoaded(true);
     if (needsOnboarding()) setShowOnboarding(true);
     loadAccounts();
+    loadActivity();
   }
 
   const closeModal = () => {
@@ -238,6 +283,78 @@ export default function DashboardPage() {
             </div>
           </section>
         )}
+
+        <section className="card">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">{"🕒"} Letzte Aktivitaeten</h2>
+              <p className="mt-1 text-sm text-slate-500">Login, Bumps, Updates und neue Nachrichten — chronologisch.</p>
+            </div>
+            <button
+              type="button"
+              onClick={loadActivity}
+              disabled={activity === null}
+              className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+            >
+              Aktualisieren
+            </button>
+          </div>
+
+          {activityError && (
+            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+              {"ℹ️"} {activityError}
+            </div>
+          )}
+
+          {activity === null && (
+            <div className="mt-4 space-y-2">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="h-12 animate-pulse rounded-lg bg-slate-100" />
+              ))}
+            </div>
+          )}
+
+          {activity !== null && activity.length === 0 && !activityError && (
+            <div className="mt-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-500">
+              Noch keine Aktivitaeten — sie erscheinen hier, sobald du oder der Scraper etwas tun.
+            </div>
+          )}
+
+          {activity !== null && activity.length > 0 && (
+            <ol className="relative mt-4 space-y-3 border-l-2 border-slate-200 pl-5">
+              {activity.map((entry, index) => {
+                const meta = activityMeta(entry.action || entry.kind);
+                const ts = entry.created_at || entry.timestamp || entry.at;
+                return (
+                  <li key={entry.id ?? `${ts}-${index}`} className="relative">
+                    <span
+                      className="absolute -left-[1.625rem] flex h-7 w-7 items-center justify-center rounded-full bg-white text-sm shadow ring-2"
+                      style={{ color: meta.color, boxShadow: `0 0 0 2px ${meta.color}` }}
+                      aria-hidden="true"
+                    >
+                      {meta.icon}
+                    </span>
+                    <div className="flex flex-wrap items-baseline gap-x-2">
+                      <span className="text-sm font-semibold text-slate-900">
+                        {entry.title || meta.label}
+                      </span>
+                      <span className="text-xs text-slate-500">{formatRelative(ts)}</span>
+                    </div>
+                    {entry.description && (
+                      <p className="mt-0.5 text-sm text-slate-600">{entry.description}</p>
+                    )}
+                    {(entry.account_label || entry.account_id || entry.listing_title) && (
+                      <p className="mt-0.5 text-xs text-slate-400">
+                        {entry.account_label || (entry.account_id ? `Konto ${entry.account_id}` : "")}
+                        {entry.listing_title ? ` · ${entry.listing_title}` : ""}
+                      </p>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+        </section>
 
         <section className="card">
           <div className="flex items-center justify-between gap-3">
