@@ -11,9 +11,14 @@ const navItems = [
   { to: "/accounts", label: "Konten", icon: "⚙️" },
   { to: "/billing", label: "Abrechnung", icon: "💳" },
   { to: "/settings", label: "Einstellungen", icon: "🎨" },
+  { to: "/auto-replies", label: "Auto-Antworten", icon: "⚡" },
+  { to: "/watches", label: "Kategorie-Monitor", icon: "🔔" },
+  { to: "/ai-create", label: "KI-Erstellen", icon: "🪄" },
 ];
 
-// Mobile bottom nav shows only the 5 most important items (375px limit)
+// Mobile bottom nav shows only the 5 most important items (375px limit).
+// The new pages (AutoReplies/Watches/AiCreate) live in the desktop
+// sidebar only — adding them here would break the 375 px overflow guard.
 const mobileNavItems = navItems.slice(0, 5);
 
 const adminNavItem = { to: "/admin", label: "Admin", icon: "🛡️" };
