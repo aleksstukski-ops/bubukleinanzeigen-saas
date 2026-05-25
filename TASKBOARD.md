@@ -23,6 +23,7 @@ Letzte Aktualisierung: 2026-05-22
 
 ## IN_PROGRESS
 <!-- - [ ] **TASK-ID**: Beschreibung | Agent: [codex/gpt/opus] | Seit: YYYY-MM-DD | Branch: xxx -->
+- [ ] **QUALITY-01**: Health check, lazy loading, validation audit, rate limits | Agent: codex | Seit: 2026-05-25 | Branch: codex/quality-pass
 
 ## DONE
 - [x] **WATCH-01**: CategoryWatch Backend + CHECK_CATEGORY Job | Agent: codex | 2026-05-24 | Commit: 58fb0ab
