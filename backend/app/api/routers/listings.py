@@ -4,6 +4,7 @@ import re
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,6 +25,7 @@ from app.schemas.resources import (
     ListingStatOut,
     ListingUpdateIn,
 )
+from app.services.activity import log_activity
 from app.services.jobs import enqueue_job
 
 router = APIRouter(prefix="/listings", tags=["listings"])
@@ -118,6 +120,73 @@ async def list_listings(
         await enqueue_job(db, JobType.SCRAPE_LISTINGS, account_id=account.id, priority=5)
 
     return ListingListResponse(items=listings, stale=is_stale, last_updated=last_updated)
+
+
+@router.get("/export")
+async def export_listings_csv(
+    account_id: int = Query(..., description="Kleinanzeigen account id"),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    account = await _get_account_for_user(db, account_id=account_id, user_id=user.id)
+
+    result = await db.execute(
+        select(Listing)
+        .where(Listing.account_id == account.id, Listing.is_active.is_(True))
+        .order_by(Listing.last_scraped_at.desc())
+    )
+    listings = result.scalars().all()
+
+    csv_buffer = io.StringIO()
+    writer = csv.DictWriter(
+        csv_buffer,
+        fieldnames=[
+            "listing_id",
+            "title",
+            "price",
+            "price_type",
+            "category",
+            "location",
+            "view_count",
+            "bookmark_count",
+            "url",
+            "expires_at",
+            "last_scraped_at",
+        ],
+    )
+    writer.writeheader()
+
+    for listing in listings:
+        writer.writerow(
+            {
+                "listing_id": listing.kleinanzeigen_id,
+                "title": listing.title,
+                "price": listing.price or "",
+                "price_type": listing.price_type or "",
+                "category": listing.category or "",
+                "location": listing.location or "",
+                "view_count": listing.view_count if listing.view_count is not None else "",
+                "bookmark_count": listing.bookmark_count if listing.bookmark_count is not None else "",
+                "url": listing.url or "",
+                "expires_at": listing.expires_at.isoformat() if listing.expires_at else "",
+                "last_scraped_at": listing.last_scraped_at.isoformat() if listing.last_scraped_at else "",
+            }
+        )
+
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    filename = f"listings-account-{account.id}-{timestamp}.csv"
+    log_activity(
+        action="listings_exported",
+        user_id=user.id,
+        account_id=account.id,
+        details={"count": len(listings), "filename": filename},
+    )
+
+    return StreamingResponse(
+        io.BytesIO(csv_buffer.getvalue().encode("utf-8-sig")),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.post("/create", response_model=JobOut)
