@@ -1,7 +1,7 @@
 """Web Push subscription management."""
 import logging
-from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,9 +16,9 @@ router = APIRouter(prefix="/push", tags=["push"])
 
 
 class PushSubscribeIn(BaseModel):
-    endpoint: str
-    p256dh: str
-    auth: str
+    endpoint: str = Field(min_length=1, max_length=2000)
+    p256dh: str = Field(min_length=1, max_length=512)
+    auth: str = Field(min_length=1, max_length=512)
 
 
 @router.get("/vapid-public-key")

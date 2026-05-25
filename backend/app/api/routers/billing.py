@@ -11,6 +11,7 @@ from app.api.deps import get_current_user
 from app.core.config import settings
 from app.db.session import get_db
 from app.models import User
+from app.schemas.billing import CheckoutSessionIn
 from app.models.user import SubscriptionPlan
 from app.shared.queue import queue as redis_queue
 
@@ -57,20 +58,13 @@ def _configure_stripe() -> None:
 
 @router.post("/checkout-session")
 async def create_checkout_session(
-    request: Request,
+    payload: CheckoutSessionIn,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Create a Stripe Checkout Session for the requested plan."""
     _configure_stripe()
-    data = await request.json()
-    plan = str(data.get("plan", "")).lower()
-
-    if plan not in VALID_PLANS:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltiger Plan: {plan}. Erlaubt: {sorted(VALID_PLANS)}",
-        )
+    plan = payload.plan
 
     price_id = _plan_price_id(plan)
     if not price_id:

@@ -22,6 +22,7 @@ from app.api.routers import (
     listings,
     messages,
     push,
+    support,
     templates,
     watches,
 )
@@ -71,6 +72,7 @@ app.include_router(ai_listings.router, prefix="/api")
 app.include_router(jobs.router, prefix="/api")
 app.include_router(listings.router, prefix="/api")
 app.include_router(messages.router, prefix="/api")
+app.include_router(support.router, prefix="/api")
 app.include_router(templates.router, prefix="/api")
 app.include_router(auto_replies.router, prefix="/api")
 app.include_router(watches.router, prefix="/api")

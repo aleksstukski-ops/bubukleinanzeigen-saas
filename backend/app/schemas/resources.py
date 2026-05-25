@@ -1,5 +1,7 @@
 from datetime import datetime
+from typing import Literal
 
+from fastapi import Form
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -62,9 +64,9 @@ class ListingStatOut(BaseModel):
 
 class BulkActionIn(BaseModel):
     listing_ids: list[str] = Field(min_length=1, max_length=100)
-    action: str  # "bump", "delete", "price_change", "scrape_description"
+    action: Literal["bump", "delete", "price_change", "scrape_description"]
     # Only used when action == "price_change":
-    price_mode: str | None = None  # "absolute" | "percent_increase" | "percent_decrease"
+    price_mode: Literal["absolute", "percent_increase", "percent_decrease"] | None = None
     price_value: float | None = Field(default=None, gt=0)
 
 
@@ -76,15 +78,15 @@ class BulkPriceIn(BaseModel):
     mode="percent"  + value=+5  → each listing's price raised by 5%
     """
     listing_ids: list[str] = Field(min_length=1, max_length=100)
-    mode: str  # "absolute" | "percent"
+    mode: Literal["absolute", "percent"]
     value: float
 
 
 class ListingUpdateIn(BaseModel):
     account_id: int
-    title: str | None = Field(default=None, min_length=1, max_length=500)
+    title: str | None = Field(default=None, min_length=1, max_length=200)
     price: str | None = Field(default=None, max_length=64)
-    description: str | None = Field(default=None, max_length=10000)
+    description: str | None = Field(default=None, max_length=5000)
 
 
 class ListingActionIn(BaseModel):
@@ -134,17 +136,28 @@ class SendMessageIn(BaseModel):
 
 class CreateListingIn(BaseModel):
     account_id: int
-    title: str = Field(min_length=1, max_length=500)
-    description: str | None = Field(default=None, max_length=10000)
+    title: str = Field(min_length=1, max_length=200)
+    description: str | None = Field(default=None, max_length=5000)
     price: str | None = Field(default=None, max_length=64)
     category_id: str | None = Field(default=None, max_length=64)
     location: str | None = Field(default=None, max_length=128)
 
 
+class ListingImportCsvIn(BaseModel):
+    account_id: int
+
+    @classmethod
+    def as_form(
+        cls,
+        account_id: int = Form(...),
+    ) -> "ListingImportCsvIn":
+        return cls(account_id=account_id)
+
+
 class ListingTemplateIn(BaseModel):
     name: str = Field(min_length=1, max_length=120)
-    title: str | None = Field(default=None, max_length=500)
-    description: str | None = Field(default=None, max_length=10000)
+    title: str | None = Field(default=None, max_length=200)
+    description: str | None = Field(default=None, max_length=5000)
     price: str | None = Field(default=None, max_length=64)
     category_id: str | None = Field(default=None, max_length=64)
     location: str | None = Field(default=None, max_length=255)
@@ -213,3 +226,28 @@ class CategoryWatchOut(BaseModel):
     is_active: bool
     last_checked_at: datetime | None
     created_at: datetime
+
+
+class AiCreateListingIn(BaseModel):
+    mode: Literal["preview", "publish"] = "preview"
+    title: str = Field(default="", max_length=200)
+    description: str = Field(default="", max_length=5000)
+    price: str = Field(default="", max_length=64)
+    category: str = Field(default="", max_length=120)
+
+    @classmethod
+    def as_form(
+        cls,
+        mode: Literal["preview", "publish"] = Form("preview"),
+        title: str = Form(""),
+        description: str = Form(""),
+        price: str = Form(""),
+        category: str = Form(""),
+    ) -> "AiCreateListingIn":
+        return cls(
+            mode=mode,
+            title=title,
+            description=description,
+            price=price,
+            category=category,
+        )
