@@ -121,7 +121,38 @@ export default function ListingsPage() {
     setSparklineData(results);
   };
 
-  const handleExportCsv = () => {
+  // Server-side export \u2014 fetches /api/listings/export?format=csv as a
+  // blob so very large lists do not have to live in the client first.
+  // Falls back to client-side CSV from filteredListings if the backend
+  // endpoint is not available (404/501), so the button is always useful.
+  const handleExportCsv = async () => {
+    const filename = `inserate-${new Date().toISOString().slice(0, 10)}.csv`;
+
+    const downloadBlob = (blob) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+
+    try {
+      const response = await api.get("/listings/export", {
+        params: { format: "csv" },
+        responseType: "blob",
+      });
+      downloadBlob(response.data);
+      return;
+    } catch (error) {
+      // Surface 4xx/5xx to the user but still let them grab the local
+      // copy below \u2014 no point blocking export when the data is on screen.
+      const status = error?.response?.status;
+      if (status && status !== 404 && status !== 501) {
+        setPageError(getErrorMessage(error));
+      }
+    }
+
     if (filteredListings.length === 0) return;
     const headers = ["ID", "Titel", "Preis", "Konto", "Views", "Gemerkt", "Status", "Letzter Sync", "URL"];
     const rows = filteredListings.map((l) => [
@@ -137,12 +168,7 @@ export default function ListingsPage() {
     ]);
     const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `inserate-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(blob);
   };
 
   const loadListings = async () => {
@@ -467,8 +493,14 @@ export default function ListingsPage() {
               <button type="button" onClick={openCreateModal} disabled={loading || accounts.length === 0} className="btn-primary">
                 {"+"} Erstellen
               </button>
-              <button type="button" onClick={handleExportCsv} disabled={loading || listings.length === 0} className="btn-secondary">
-                {"📥"} CSV
+              <button
+                type="button"
+                onClick={handleExportCsv}
+                disabled={loading || listings.length === 0}
+                className="btn-secondary"
+                title="Inserate als CSV herunterladen"
+              >
+                {"📥"} Export CSV
               </button>
               <button type="button" onClick={loadListings} disabled={loading} className="btn-secondary">
                 {loading ? "Ladt..." : "Neu laden"}
