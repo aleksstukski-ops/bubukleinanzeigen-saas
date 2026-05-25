@@ -11,6 +11,7 @@ from slowapi.util import get_remote_address
 from app.core.config import settings
 from app.api.routers import (
     admin,
+    activity,
     ai_listings,
     auth,
     auto_replies,
@@ -31,7 +32,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
 
 app = FastAPI(
-    title="BubuKleinanzeigen API",
+    title="BubuBay API",
     description="Multi-Account Kleinanzeigen.de Management — SaaS Backend",
     version="0.1.0",
 )
@@ -59,6 +60,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 
 
 app.include_router(admin.router, prefix="/api")
+app.include_router(activity.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
 app.include_router(billing.router, prefix="/api")
 app.include_router(push.router, prefix="/api")
@@ -79,4 +81,4 @@ async def health():
 
 @app.get("/", include_in_schema=False)
 async def root():
-    return {"service": "bubukleinanzeigen-api", "docs": "/docs"}
+    return {"service": "bububay-api", "docs": "/docs"}
