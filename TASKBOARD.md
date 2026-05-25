@@ -23,9 +23,9 @@ Letzte Aktualisierung: 2026-05-22
 
 ## IN_PROGRESS
 <!-- - [ ] **TASK-ID**: Beschreibung | Agent: [codex/gpt/opus] | Seit: YYYY-MM-DD | Branch: xxx -->
-- [ ] **QUALITY-01**: Health check, lazy loading, validation audit, rate limits | Agent: codex | Seit: 2026-05-25 | Branch: codex/quality-pass
 
 ## DONE
+- [x] **QUALITY-01**: Health check, lazy loading, validation audit, rate limits | Files: backend/app/api/routers/health.py, backend/app/api/routers/support.py, backend/app/services/health.py, backend/app/schemas/auth.py, backend/app/schemas/resources.py, backend/app/schemas/billing.py, backend/app/schemas/support.py, backend/app/api/routers/ai_listings.py, backend/app/api/routers/billing.py, backend/app/api/routers/listings.py, backend/app/api/routers/push.py, backend/app/scraper/worker.py, backend/app/main.py, frontend/src/App.jsx, frontend/src/components/LoadingSpinner.jsx | Agent: codex | 2026-05-25 | Commit: 4279484
 - [x] **WATCH-01**: CategoryWatch Backend + CHECK_CATEGORY Job | Agent: codex | 2026-05-24 | Commit: 58fb0ab
 - [x] **REPLY-01**: AutoReplyRule Backend + dispatcher hook | Agent: codex | 2026-05-24 | Commit: 58fb0ab
 - [x] **CORS-01**: ALLOWED_ORIGINS + FRONTEND_URL auf bububay.de | Agent: codex | 2026-05-24 | Commit: 8df9c58
