@@ -272,3 +272,30 @@
     color: var(--text-muted);
   }
 }
+
+/* ── Skeleton shimmer ─────────────────────────────────────────── */
+/* Pure CSS animated placeholder. Used by <Skeleton*> components. */
+@keyframes bubu-skeleton-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--border) 100%, transparent) 0%,
+    color-mix(in srgb, var(--surface) 100%, transparent) 50%,
+    color-mix(in srgb, var(--border) 100%, transparent) 100%
+  );
+  background-size: 200% 100%;
+  animation: bubu-skeleton-shimmer 1.4s ease-in-out infinite;
+  border-radius: 0.5rem;
+}
+
+/* Respect users who prefer no motion */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-shimmer {
+    animation: none;
+    background: color-mix(in srgb, var(--border) 100%, transparent);
+  }
+}

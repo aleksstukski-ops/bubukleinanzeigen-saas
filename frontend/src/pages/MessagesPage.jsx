@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import api from "../lib/api";
 import ConversationView from "../components/ConversationView";
+import { SkeletonList } from "../components/Skeleton";
 
 function getErrorMessage(error) {
   return error?.response?.data?.detail || error?.message || "Aktion fehlgeschlagen.";
@@ -215,7 +216,12 @@ export default function MessagesPage() {
             <p className="mt-2 text-sm text-slate-500">Zentrale Inbox mit Polling alle 15 Sekunden.</p>
           </div>
           <button type="button" onClick={loadAll} disabled={loading} className="btn-secondary">
-            {loading ? "Lädt..." : "Neu laden"}
+            {loading ? (
+              <span className="inline-flex items-center gap-2">
+                <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                Laedt
+              </span>
+            ) : "Neu laden"}
           </button>
         </div>
 
@@ -257,12 +263,7 @@ export default function MessagesPage() {
           {pageNotice ? <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-700">{pageNotice}</div> : null}
 
           <div className="mt-4 space-y-3">
-            {loading ? (
-              <>
-                <div className="h-24 animate-pulse rounded-lg bg-slate-100" />
-                <div className="h-24 animate-pulse rounded-lg bg-slate-100" />
-              </>
-            ) : null}
+            {loading ? <SkeletonList count={4} withAvatar lines={2} /> : null}
 
             {!loading && filteredConversations.length === 0 ? (
               <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-500">Keine Unterhaltungen gefunden.</div>
