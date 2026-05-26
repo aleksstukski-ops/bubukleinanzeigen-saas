@@ -23,9 +23,9 @@ Letzte Aktualisierung: 2026-05-22
 
 ## IN_PROGRESS
 <!-- - [ ] **TASK-ID**: Beschreibung | Agent: [codex/gpt/opus] | Seit: YYYY-MM-DD | Branch: xxx -->
-- [ ] **INFRA-02**: Docker, migrations, caching, security hardening | Agent: codex | Seit: 2026-05-26 | Branch: codex/infra-pass
 
 ## DONE
+- [x] **INFRA-02**: Docker, migrations, caching, security hardening | Files: backend/Dockerfile, frontend/Dockerfile, docker-compose.yml, backend/app/models/activity_log.py, backend/migrations/versions/0010_add_activity_log.py, backend/app/services/cache.py, backend/app/services/activity.py, backend/app/api/routers/activity.py, backend/app/api/routers/listings.py, backend/app/core/config.py, backend/app/schemas/auth.py, backend/app/main.py | Agent: codex | 2026-05-26 | Commit: 2218b82
 - [x] **WATCH-01**: CategoryWatch Backend + CHECK_CATEGORY Job | Agent: codex | 2026-05-24 | Commit: 58fb0ab
 - [x] **REPLY-01**: AutoReplyRule Backend + dispatcher hook | Agent: codex | 2026-05-24 | Commit: 58fb0ab
 - [x] **CORS-01**: ALLOWED_ORIGINS + FRONTEND_URL auf bububay.de | Agent: codex | 2026-05-24 | Commit: 8df9c58
