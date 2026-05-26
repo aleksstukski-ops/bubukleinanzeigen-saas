@@ -5,12 +5,12 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 class UserRegisterIn(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
-    full_name: str | None = Field(default=None, max_length=255)
+    full_name: str | None = Field(default=None, max_length=120)
 
 
 class UserLoginIn(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(min_length=1, max_length=128)
 
 
 class TokenPair(BaseModel):
@@ -20,7 +20,7 @@ class TokenPair(BaseModel):
 
 
 class RefreshTokenIn(BaseModel):
-    refresh_token: str
+    refresh_token: str = Field(min_length=1, max_length=4096)
 
 
 class UserOut(BaseModel):
@@ -49,5 +49,5 @@ class PasswordResetRequestIn(BaseModel):
 
 
 class PasswordResetIn(BaseModel):
-    token: str
-    password: str = Field(min_length=8)
+    token: str = Field(min_length=1, max_length=4096)
+    password: str = Field(min_length=8, max_length=128)

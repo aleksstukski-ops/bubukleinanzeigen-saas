@@ -1,15 +1,19 @@
 import base64
 import os
-from typing import Literal, Optional
+from typing import Optional
 
 import httpx
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Request, UploadFile
 from pydantic import BaseModel
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app.api.deps import get_current_user
 from app.models import User
+from app.schemas.resources import AiCreateListingIn
 
 router = APIRouter(prefix="/listings", tags=["ai-listings"])
+limiter = Limiter(key_func=get_remote_address)
 
 
 class AiListingSuggestionOut(BaseModel):
@@ -144,17 +148,15 @@ async def _request_openai_suggestion(
 
 
 @router.post("/ai-create", response_model=AiListingSuggestionOut)
+@limiter.limit("5/minute")
 async def ai_create_listing(
-    mode: Literal["preview", "publish"] = Form("preview"),
-    title: str = Form(""),
-    description: str = Form(""),
-    price: str = Form(""),
-    category: str = Form(""),
+    request: Request,
+    payload: AiCreateListingIn = Depends(AiCreateListingIn.as_form),
     image: Optional[UploadFile] = File(None),
     images: list[UploadFile] = File(default=[]),
     user: User = Depends(get_current_user),
 ):
-    del mode, user
+    _ = request, payload.mode, user
 
     image_payloads = await _read_images(image, images)
     file_names = [upload.filename or "bild" for upload in ([image] if image else []) + list(images or []) if upload]
@@ -162,16 +164,16 @@ async def ai_create_listing(
     try:
         return await _request_openai_suggestion(
             image_payloads=image_payloads,
-            title=title,
-            description=description,
-            price=price,
-            category=category,
+            title=payload.title,
+            description=payload.description,
+            price=payload.price,
+            category=payload.category,
         )
     except Exception:
         return _build_placeholder_suggestion(
             file_names=file_names,
-            title=title,
-            description=description,
-            price=price,
-            category=category,
+            title=payload.title,
+            description=payload.description,
+            price=payload.price,
+            category=payload.category,
         )

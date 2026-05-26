@@ -11,6 +11,7 @@ from app.models.domain import Listing
 from app.scraper.dispatcher import dispatch_job, JobError
 from app.scraper.session_manager import SessionManager
 from app.services.alerts import send_alert
+from app.services.health import clear_scraper_heartbeat, mark_scraper_heartbeat
 from app.services.jobs import enqueue_job
 from app.shared.queue import queue
 
@@ -28,6 +29,7 @@ class Worker:
     async def run(self) -> None:
         log.info("Scraper worker started (max concurrent accounts=%s)", settings.SCRAPER_MAX_CONCURRENT_ACCOUNTS)
         Path(settings.SCRAPER_SESSION_DIR).mkdir(parents=True, exist_ok=True)
+        await mark_scraper_heartbeat()
         # Re-enqueue any pending jobs whose Redis entry was lost (e.g. after a restart)
         await self._recover_orphaned_jobs()
         # Start auto-bump scheduler as a background task
@@ -40,6 +42,7 @@ class Worker:
         session_checker_task.add_done_callback(self._tasks.discard)
         try:
             while not self._shutdown.is_set():
+                await mark_scraper_heartbeat()
                 item = await queue.pop(timeout=3)
                 if item is None:
                     continue
@@ -63,6 +66,7 @@ class Worker:
                         task.cancel()
                     await asyncio.gather(*list(self._tasks), return_exceptions=True)
             await self.session_manager.close_all()
+            await clear_scraper_heartbeat()
             await queue.close()
             log.info("Worker shutdown complete")
 

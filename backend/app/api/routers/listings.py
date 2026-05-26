@@ -3,9 +3,11 @@ import io
 import re
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,6 +21,7 @@ from app.schemas.resources import (
     BumpScheduleIn,
     CreateListingIn,
     JobOut,
+    ListingImportCsvIn,
     ListingActionIn,
     ListingListResponse,
     ListingOut,
@@ -29,6 +32,7 @@ from app.services.activity import log_activity
 from app.services.jobs import enqueue_job
 
 router = APIRouter(prefix="/listings", tags=["listings"])
+limiter = Limiter(key_func=get_remote_address)
 STALE_SECONDS = 120
 
 
@@ -123,11 +127,14 @@ async def list_listings(
 
 
 @router.get("/export")
+@limiter.limit("10/minute")
 async def export_listings_csv(
+    request: Request,
     account_id: int = Query(..., description="Kleinanzeigen account id"),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    _ = request
     account = await _get_account_for_user(db, account_id=account_id, user_id=user.id)
 
     result = await db.execute(
@@ -237,7 +244,7 @@ def _detect_dialect(sample: str) -> csv.Dialect:
 
 @router.post("/import-csv", response_model=list[JobOut])
 async def import_listings_csv(
-    account_id: int = Form(...),
+    payload: ListingImportCsvIn = Depends(ListingImportCsvIn.as_form),
     file: UploadFile = File(...),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -247,7 +254,7 @@ async def import_listings_csv(
     Required column: title. Optional: description, price, category_id, location.
     Excel-style (;) and TSV separators are detected automatically.
     """
-    account = await _get_account_for_user(db, account_id=account_id, user_id=user.id)
+    account = await _get_account_for_user(db, account_id=payload.account_id, user_id=user.id)
 
     raw = await file.read()
     if not raw:

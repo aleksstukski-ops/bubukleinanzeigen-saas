@@ -16,11 +16,13 @@ from app.api.routers import (
     auth,
     auto_replies,
     billing,
+    health,
     jobs,
     kleinanzeigen_accounts,
     listings,
     messages,
     push,
+    support,
     templates,
     watches,
 )
@@ -34,7 +36,7 @@ limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
 app = FastAPI(
     title="BubuBay API",
     description="Multi-Account Kleinanzeigen.de Management — SaaS Backend",
-    version="0.1.0",
+    version="1.0.0",
 )
 
 app.state.limiter = limiter
@@ -63,21 +65,17 @@ app.include_router(admin.router, prefix="/api")
 app.include_router(activity.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
 app.include_router(billing.router, prefix="/api")
+app.include_router(health.router, prefix="/api")
 app.include_router(push.router, prefix="/api")
 app.include_router(kleinanzeigen_accounts.router, prefix="/api")
 app.include_router(ai_listings.router, prefix="/api")
 app.include_router(jobs.router, prefix="/api")
 app.include_router(listings.router, prefix="/api")
 app.include_router(messages.router, prefix="/api")
+app.include_router(support.router, prefix="/api")
 app.include_router(templates.router, prefix="/api")
 app.include_router(auto_replies.router, prefix="/api")
 app.include_router(watches.router, prefix="/api")
-
-
-@app.get("/api/health", tags=["health"])
-async def health():
-    return {"status": "ok"}
-
 
 @app.get("/", include_in_schema=False)
 async def root():
