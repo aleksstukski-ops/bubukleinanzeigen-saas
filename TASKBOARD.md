@@ -23,6 +23,7 @@ Letzte Aktualisierung: 2026-05-22
 
 ## IN_PROGRESS
 <!-- - [ ] **TASK-ID**: Beschreibung | Agent: [codex/gpt/opus] | Seit: YYYY-MM-DD | Branch: xxx -->
+- [ ] **INFRA-02**: Docker, migrations, caching, security hardening | Agent: codex | Seit: 2026-05-26 | Branch: codex/infra-pass
 
 ## DONE
 - [x] **WATCH-01**: CategoryWatch Backend + CHECK_CATEGORY Job | Agent: codex | 2026-05-24 | Commit: 58fb0ab
