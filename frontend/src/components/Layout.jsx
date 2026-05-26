@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import api from "../lib/api";
+import { ToastProvider } from "./Toast";
 
 // All nav items shown in desktop sidebar
 const navItems = [
@@ -135,6 +136,7 @@ export default function Layout() {
   const showKaBanner = kaNeedsLogin.length > 0 && kaSignature !== kaBannerDismissedIds;
 
   return (
+    <ToastProvider>
     <div className="flex min-h-screen" style={{ background: "var(--bg)" }}>
       {sessionExpired && (
         <div className="fixed inset-x-0 top-0 z-50 flex items-center justify-between gap-3 bg-amber-500 px-4 py-3 text-sm font-medium text-white shadow-md">
@@ -227,5 +229,6 @@ export default function Layout() {
         </div>
       </nav>
     </div>
+    </ToastProvider>
   );
 }

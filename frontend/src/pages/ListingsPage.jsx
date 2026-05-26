@@ -4,6 +4,7 @@ import { LineChart, Line, ResponsiveContainer } from "recharts";
 import ListingDetailModal from "../components/ListingDetailModal";
 import ListingEditModal from "../components/ListingEditModal";
 import { SkeletonList } from "../components/Skeleton";
+import { useToast } from "../components/Toast";
 
 function Sparkline({ data }) {
   if (!data || data.length < 2) return null;
@@ -67,6 +68,7 @@ function getStatusClass(listing, processingState) {
 }
 
 export default function ListingsPage() {
+  const toast = useToast();
   const [loaded, setLoaded] = useState(false);
   const [accounts, setAccounts] = useState([]);
   const [listings, setListings] = useState([]);
@@ -247,16 +249,19 @@ export default function ListingsPage() {
   const handleBump = async () => {
     if (!selectedListing) return;
     const listingId = selectedListing.kleinanzeigen_id;
+    const titleForToast = selectedListing.title || "Inserat";
     setActiveActionId(`bump:${listingId}`);
     setPageError("");
     setPageNotice("");
     try {
       await api.post(`/listings/${listingId}/bump`, { account_id: selectedListing.account_id });
       markProcessing(listingId, "bump");
-      setPageNotice("Hochschieben wurde gestartet.");
+      toast.success(`"${titleForToast}" wurde hochgeschoben.`);
       await loadListings();
     } catch (error) {
-      setPageError(getErrorMessage(error));
+      const msg = getErrorMessage(error);
+      setPageError(msg);
+      toast.error(msg);
     } finally {
       setActiveActionId("");
     }
