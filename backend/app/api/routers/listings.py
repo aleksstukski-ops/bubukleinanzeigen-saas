@@ -4,6 +4,7 @@ import re
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -24,6 +25,13 @@ from app.schemas.resources import (
     ListingOut,
     ListingStatOut,
     ListingUpdateIn,
+)
+from app.services.cache import (
+    LISTINGS_ALL_TTL_SECONDS,
+    get_cache_json,
+    invalidate_listings_cache,
+    listings_all_cache_key,
+    set_cache_json,
 )
 from app.services.activity import log_activity
 from app.services.jobs import enqueue_job
@@ -82,6 +90,11 @@ async def list_all_listings(
     db: AsyncSession = Depends(get_db),
 ):
     """Return all active listings for all accounts belonging to this user — single DB query."""
+    cache_key = listings_all_cache_key(user.id)
+    cached = await get_cache_json(cache_key)
+    if cached is not None:
+        return cached
+
     result = await db.execute(
         select(Listing)
         .join(KleinanzeigenAccount, KleinanzeigenAccount.id == Listing.account_id)
@@ -91,7 +104,9 @@ async def list_all_listings(
         )
         .order_by(Listing.last_scraped_at.desc())
     )
-    return result.scalars().all()
+    listings = result.scalars().all()
+    await set_cache_json(cache_key, jsonable_encoder(listings), LISTINGS_ALL_TTL_SECONDS)
+    return listings
 
 
 @router.get("", response_model=ListingListResponse)
@@ -175,7 +190,8 @@ async def export_listings_csv(
 
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
     filename = f"listings-account-{account.id}-{timestamp}.csv"
-    log_activity(
+    await log_activity(
+        db,
         action="listings_exported",
         user_id=user.id,
         account_id=account.id,
@@ -211,6 +227,7 @@ async def create_listing(
         },
         priority=3,
     )
+    await invalidate_listings_cache(user.id)
     return job
 
 
@@ -307,6 +324,7 @@ async def import_listings_csv(
     if not jobs:
         raise HTTPException(status_code=400, detail="CSV enthaelt keine verwertbaren Zeilen.")
 
+    await invalidate_listings_cache(user.id)
     return jobs
 
 
@@ -412,6 +430,7 @@ async def bulk_price(
         )
         jobs.append(job)
 
+    await invalidate_listings_cache(user.id)
     return jobs
 
 
@@ -496,6 +515,7 @@ async def bulk_action(
             continue
         jobs.append(job)
 
+    await invalidate_listings_cache(user.id)
     return jobs
 
 
@@ -536,6 +556,7 @@ async def bump_listing(
         payload={"listing_id": listing.kleinanzeigen_id},
         priority=2,
     )
+    await invalidate_listings_cache(user.id)
     return job
 
 
@@ -564,6 +585,7 @@ async def update_listing(
         },
         priority=3,
     )
+    await invalidate_listings_cache(user.id)
     return job
 
 
@@ -590,6 +612,7 @@ async def set_bump_schedule(
 
     await db.commit()
     await db.refresh(listing)
+    await invalidate_listings_cache(user.id)
     return listing
 
 
@@ -632,6 +655,7 @@ async def create_auto_bump_schedule(
     listing.next_bump_at = datetime.now(timezone.utc) + timedelta(hours=payload.interval_hours)
     await db.commit()
     await db.refresh(listing)
+    await invalidate_listings_cache(user.id)
     return listing
 
 
@@ -652,6 +676,7 @@ async def delete_auto_bump_schedule(
     listing.next_bump_at = None
     await db.commit()
     await db.refresh(listing)
+    await invalidate_listings_cache(user.id)
     return listing
 
 
@@ -675,4 +700,5 @@ async def delete_listing(
         payload={"listing_id": listing.kleinanzeigen_id},
         priority=3,
     )
+    await invalidate_listings_cache(user.id)
     return job
