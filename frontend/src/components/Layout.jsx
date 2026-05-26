@@ -4,6 +4,7 @@ import { useAuth } from "../hooks/useAuth";
 import api from "../lib/api";
 import { ToastProvider } from "./Toast";
 import useKeyboardShortcuts from "../hooks/useKeyboardShortcuts";
+import Footer from "./Footer";
 
 // All nav items shown in desktop sidebar
 const navItems = [
@@ -359,6 +360,7 @@ export default function Layout() {
         <main className="page-shell min-w-0 flex-1 px-4 py-4 md:px-6 md:py-6">
           <Outlet />
         </main>
+        <Footer />
       </div>
 
       <nav
