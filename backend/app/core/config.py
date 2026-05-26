@@ -1,5 +1,15 @@
 from functools import lru_cache
+from urllib.parse import urlparse
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_DEFAULT_ALLOWED_ORIGINS = [
+ "https://bububay.de",
+ "https://www.bububay.de",
+ "http://localhost:3000",
+ "http://127.0.0.1:3000",
+]
+_ALLOWED_ORIGIN_HOSTS = {"bububay.de", "www.bububay.de", "localhost", "127.0.0.1"}
 
 
 class Settings(BaseSettings):
@@ -18,7 +28,7 @@ class Settings(BaseSettings):
 
  REDIS_URL: str = "redis://redis:6379/0"
 
- ALLOWED_ORIGINS: str = "http://localhost:3000"
+ ALLOWED_ORIGINS: str = ",".join(_DEFAULT_ALLOWED_ORIGINS)
 
  PLAYWRIGHT_HEADLESS: bool = True
  SCRAPER_MAX_CONCURRENT_ACCOUNTS: int = 5
@@ -51,7 +61,29 @@ class Settings(BaseSettings):
 
  @property
  def allowed_origins_list(self):
-  return [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
+  configured = [o.strip().rstrip("/") for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
+  safe_origins: list[str] = []
+  for origin in configured:
+   parsed = urlparse(origin)
+   if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+    continue
+   if "*" in origin:
+    continue
+   host = parsed.hostname or ""
+   if host not in _ALLOWED_ORIGIN_HOSTS:
+    continue
+   if host in {"bububay.de", "www.bububay.de"} and parsed.scheme != "https":
+    continue
+   safe_origins.append(origin)
+
+  if not safe_origins:
+   return list(_DEFAULT_ALLOWED_ORIGINS)
+
+  deduped: list[str] = []
+  for origin in safe_origins:
+   if origin not in deduped:
+    deduped.append(origin)
+  return deduped
 
 
 @lru_cache
