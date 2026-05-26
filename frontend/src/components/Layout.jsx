@@ -1,8 +1,9 @@
-import { useRef, useState } from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { useMemo, useRef, useState } from "react";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import api from "../lib/api";
 import { ToastProvider } from "./Toast";
+import useKeyboardShortcuts from "../hooks/useKeyboardShortcuts";
 
 // All nav items shown in desktop sidebar
 const navItems = [
@@ -88,13 +89,141 @@ function NavItem({ item, mobile = false, badgeValue = 0 }) {
   );
 }
 
+function QuickSearchPalette({ open, onClose }) {
+  const navigate = useNavigate();
+  const [query, setQuery] = useState("");
+
+  // Reset query whenever the palette transitions from closed -> open
+  if (!open && query !== "") {
+    setQuery("");
+  }
+
+  if (!open) return null;
+
+  const targets = navItems
+    .concat([
+      { to: "/auto-bump", label: "Auto-Bump", icon: "⏱️" },
+      { to: "/notifications", label: "Mitteilungen", icon: "📨" },
+      { to: "/support", label: "Support", icon: "💬" },
+    ])
+    .filter((item, i, arr) => arr.findIndex((x) => x.to === item.to) === i);
+
+  const q = query.trim().toLowerCase();
+  const filtered = q
+    ? targets.filter((t) => t.label.toLowerCase().includes(q) || t.to.toLowerCase().includes(q))
+    : targets;
+
+  const pick = (to) => {
+    onClose();
+    navigate(to);
+  };
+
+  const onKeyDown = (event) => {
+    if (event.key === "Enter" && filtered.length > 0) {
+      event.preventDefault();
+      pick(filtered[0].to);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[55] flex items-start justify-center px-4 pt-[15vh]"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Schnellsuche"
+    >
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden="true" />
+      <div
+        className="relative w-full max-w-lg overflow-hidden rounded-2xl border shadow-2xl"
+        style={{ background: "var(--surface)", borderColor: "var(--border)" }}
+      >
+        <div className="flex items-center gap-3 border-b px-4 py-3" style={{ borderColor: "var(--border)" }}>
+          <span className="text-lg" aria-hidden="true">{"🔍"}</span>
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={onKeyDown}
+            autoFocus
+            placeholder="Seite suchen oder Befehl tippen..."
+            className="min-w-0 flex-1 bg-transparent text-sm outline-none"
+            style={{ color: "var(--text)" }}
+            aria-label="Suchanfrage"
+          />
+          <kbd
+            className="hidden rounded px-1.5 py-0.5 text-[10px] font-medium sm:inline-block"
+            style={{ background: "var(--bg)", color: "var(--text-subtle)", border: "1px solid var(--border)" }}
+          >
+            Esc
+          </kbd>
+        </div>
+        <ul className="max-h-80 overflow-y-auto py-2">
+          {filtered.length === 0 && (
+            <li className="px-4 py-3 text-sm" style={{ color: "var(--text-subtle)" }}>
+              Keine Treffer.
+            </li>
+          )}
+          {filtered.map((t, i) => (
+            <li key={t.to}>
+              <button
+                type="button"
+                onClick={() => pick(t.to)}
+                className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm transition hover:bg-black/5 dark:hover:bg-white/5"
+                style={{ color: "var(--text)" }}
+              >
+                <span className="text-lg" aria-hidden="true">{t.icon}</span>
+                <span className="flex-1 truncate">{t.label}</span>
+                {i === 0 && (
+                  <kbd
+                    className="rounded px-1.5 py-0.5 text-[10px] font-medium"
+                    style={{ background: "var(--bg)", color: "var(--text-subtle)", border: "1px solid var(--border)" }}
+                  >
+                    {"⏎"}
+                  </kbd>
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 export default function Layout() {
   const { user, logout, sessionExpired, dismissSessionExpired } = useAuth();
   const [unreadTotal, setUnreadTotal] = useState(0);
   const [pollerStarted, setPollerStarted] = useState(false);
   const [kaNeedsLogin, setKaNeedsLogin] = useState([]);
   const [kaBannerDismissedIds, setKaBannerDismissedIds] = useState("");
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const pollerRef = useRef(null);
+
+  const shortcuts = useMemo(() => ([
+    {
+      key: "k",
+      meta: true,
+      handler: () => setPaletteOpen((v) => !v),
+    },
+    {
+      key: "k",
+      ctrl: true,
+      handler: () => setPaletteOpen((v) => !v),
+    },
+    {
+      key: "Escape",
+      allowInInput: true,
+      // Only consume Esc when the palette is the foreground UI. Other
+      // modals (Modal.jsx) bring their own Escape handling, so we just
+      // close ours and don't preventDefault if it wasn't open.
+      preventDefault: paletteOpen,
+      handler: () => {
+        if (paletteOpen) setPaletteOpen(false);
+      },
+    },
+  ]), [paletteOpen]);
+
+  useKeyboardShortcuts(shortcuts);
 
   const fetchUnread = async () => {
     try {
@@ -202,9 +331,28 @@ export default function Layout() {
               <div className="text-base font-semibold md:hidden" style={{ color: "var(--text)" }}>BubuBay</div>
               <div className="truncate text-sm" style={{ color: "var(--text-muted)" }}>{user?.email || "-"}</div>
             </div>
-            <button type="button" onClick={logout} className="btn-secondary shrink-0">
-              Abmelden
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPaletteOpen(true)}
+                aria-label="Schnellsuche oeffnen"
+                title="Schnellsuche (Cmd+K)"
+                className="hidden items-center gap-2 rounded-lg border px-3 py-1.5 text-xs transition hover:bg-black/5 sm:inline-flex dark:hover:bg-white/5"
+                style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
+              >
+                <span aria-hidden="true">{"🔍"}</span>
+                <span>Suche</span>
+                <kbd
+                  className="rounded px-1 py-0.5 text-[10px] font-medium"
+                  style={{ background: "var(--bg)", color: "var(--text-subtle)", border: "1px solid var(--border)" }}
+                >
+                  ⌘K
+                </kbd>
+              </button>
+              <button type="button" onClick={logout} className="btn-secondary shrink-0">
+                Abmelden
+              </button>
+            </div>
           </div>
         </header>
 
@@ -228,6 +376,7 @@ export default function Layout() {
           ))}
         </div>
       </nav>
+      <QuickSearchPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
     </div>
     </ToastProvider>
   );
