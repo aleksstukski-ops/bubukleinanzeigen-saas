@@ -88,6 +88,13 @@ app.include_router(watches.router, prefix="/api")
 app.include_router(events.router, prefix="/api")
 app.include_router(posting.router, prefix="/api")
 
+@app.on_event("shutdown")
+async def _close_event_streams():
+    # End all open SSE streams so graceful shutdown/reload never hangs
+    # on long-lived connections.
+    events.shutdown_event.set()
+
+
 @app.get("/", include_in_schema=False)
 async def root():
     return {"service": "bububay-api", "docs": "/docs"}

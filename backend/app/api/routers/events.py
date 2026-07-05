@@ -1,4 +1,6 @@
+import asyncio
 import logging
+import time
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
@@ -12,6 +14,14 @@ from app.shared.events import close_subscription, open_subscription
 log = logging.getLogger("api.events")
 
 router = APIRouter(prefix="/events", tags=["events"])
+
+# Set on app shutdown so open SSE streams end immediately — otherwise a
+# single connected browser blocks uvicorn's graceful shutdown/reload forever.
+shutdown_event = asyncio.Event()
+
+# Cap each stream's lifetime; EventSource reconnects automatically and picks
+# up a fresh access token on reconnect.
+MAX_STREAM_SECONDS = 15 * 60
 
 
 @router.get("/stream")
@@ -38,16 +48,25 @@ async def stream_events(request: Request, token: str = Query(...)):
 
     async def event_source():
         pubsub = await open_subscription(user_id)
+        started = time.monotonic()
+        last_keepalive = started
         try:
             # Tell the browser to wait 5s before reconnect attempts
             yield "retry: 5000\n\n"
             while True:
                 if await request.is_disconnected():
                     break
-                message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=15)
+                if shutdown_event.is_set():
+                    break
+                if time.monotonic() - started > MAX_STREAM_SECONDS:
+                    break
+                # Short poll interval so shutdown is honored within ~1s
+                message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1)
                 if message is None:
-                    # Keepalive comment so proxies do not kill the connection
-                    yield ": keepalive\n\n"
+                    # Keepalive comment every ~15s so proxies keep the connection
+                    if time.monotonic() - last_keepalive > 15:
+                        last_keepalive = time.monotonic()
+                        yield ": keepalive\n\n"
                     continue
                 data = message.get("data")
                 if data:
