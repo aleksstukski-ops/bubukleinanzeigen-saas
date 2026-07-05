@@ -46,6 +46,36 @@ Verifiziert: alle Services laufen, Migration ok, Posting-API-Smoke-Test
 (Schedule-Upsert, 400 bei ungueltigem Fenster, Draft-Queue, Overview),
 SSE end-to-end (publish via Redis → Event am Stream empfangen).
 
+## Session 6b (2026-07-05): AnzeigenChef-Desktop-Analyse + Runde 2
+
+AnzeigenChef Desktop 2.1.046 (Demo, lokal installiert) per UI-Walkthrough
+katalogisiert. Kernstruktur dort: Lifecycle-Ordner (Aktiv/Reserviert/Beendet/
+Verkauft mit Unterstufen Zahlung/Abholung/Versand/Abgeschlossen/Abgebrochen),
+Anzeigenausgang, Geplant, Nachrichten mit Blockliste+Spam+Archiv, Vorlagen,
+Suchagent mit Verfuegbarkeits-Tracking, Makros, Multi-Plattform-Konten
+(Kleinanzeigen/markt.de/Quoka/Shpock/willhaben), WaWi/Shop-Schnittstellen,
+Community-Chat, MySQL-Mehrplatz. Featurekatalog als eigenstaendige
+Web-Implementierung nachgebaut (kein Code/keine Assets uebernommen):
+
+1. **Verkaufs-Pipeline** (Migration 0012): listings.sale_status
+   (reserved/awaiting_payment/awaiting_shipping/awaiting_pickup/
+   completed/cancelled) + sold_price/buyer_name/sale_note/sold_at.
+   API: PATCH /listings/sale/{db_id}, GET /listings/sales-summary
+   (Gesamtwerte aktiv/reserviert/in Abwicklung/verkauft).
+   Frontend: SalesPage unter /sales mit Stufen-Boards, in Mobile-Nav.
+2. **Nachrichten-Center**: conversations.is_spam + note; Inbox-Tabs
+   (Inbox/Archiv/Spam) via view-Param; Antwort-Vorlagen
+   (message_templates, Platzhalter {name}/{titel}); Blockliste
+   (blocked_partners) — Scraper flaggt geblockte Partner bei jedem
+   Scrape als Spam, unread-Badge zaehlt nur Inbox.
+
+Offen fuer Runde 3 (aus AnzeigenChef-Katalog):
+- Anzeigenausgang-Aequivalent: "Sofort veroeffentlichen"-Button in Auto-Post-Queue
+- Suchagent-Ausbau: Treffer-Verfuegbarkeit, E-Mail-Alerts, Anfrage direkt senden
+- Makro-Kuerzel in Inserat-Beschreibungen (Templates koennen es teilweise)
+- Multi-Plattform (markt.de, Quoka, Shpock, willhaben) — grosser Brocken
+- Shop/WaWi-Schnittstellen (WooCommerce zuerst)
+
 Offen fuer Runde 2 (Ideen aus Konkurrenz-Analyse):
 - KI-Anzeigenerstellung aus Fotos (Kleinanzeigen-Manager kann das)
 - KI-Betrugsanalyse fuer eingehende Nachrichten (Kleinanzeigen-Enhanced)

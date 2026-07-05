@@ -29,6 +29,8 @@ Letzte Aktualisierung: 2026-05-22
 <!-- - [ ] **TASK-ID**: Beschreibung | Agent: [codex/gpt/opus] | Seit: YYYY-MM-DD | Branch: xxx -->
 
 ## DONE
+- [x] **SALES-01**: Verkaufs-Pipeline (sale_status-Stufen, Gesamtwert-Statistik, SalesPage /sales) | Files: backend/app/models/domain.py, backend/migrations/versions/0012_add_sales_and_message_tools.py, backend/app/api/routers/listings.py, frontend/src/pages/SalesPage.jsx | Agent: claude | 2026-07-05
+- [x] **MSG-05**: Nachrichten-Center (Inbox/Archiv/Spam-Tabs, Antwort-Vorlagen, Blockliste, Notizen) | Files: backend/app/models/message_tools.py, backend/app/api/routers/messages.py, backend/app/scraper/dispatcher.py, frontend/src/pages/MessagesPage.jsx, frontend/src/components/ConversationView.jsx | Agent: claude | 2026-07-05
 - [x] **RT-01**: Echtzeit-Nachrichten (SSE /api/events/stream + Redis Pub/Sub + Worker-Message-Poll 90s) | Files: backend/app/shared/events.py, backend/app/api/routers/events.py, backend/app/scraper/dispatcher.py, backend/app/scraper/worker.py, frontend/src/lib/events.js, frontend/src/components/Layout.jsx, frontend/src/pages/MessagesPage.jsx | Agent: claude | 2026-07-05
 - [x] **AUTOPOST-01**: Auto-Posting-Scheduler (N Inserate/Tag pro Konto, Zeitfenster, Warteschlange) | Files: backend/app/models/posting_schedule.py, backend/migrations/versions/0011_add_posting_scheduler.py, backend/app/api/routers/posting.py, backend/app/scraper/worker.py, frontend/src/pages/AutoPostPage.jsx | Agent: claude | 2026-07-05
 - [x] **DASH-01**: Dashboard-Umbau (Multi-Account-Kacheln, /ka-accounts/overview, Live-Refresh) | Files: backend/app/api/routers/kleinanzeigen_accounts.py, frontend/src/pages/DashboardPage.jsx | Agent: claude | 2026-07-05
