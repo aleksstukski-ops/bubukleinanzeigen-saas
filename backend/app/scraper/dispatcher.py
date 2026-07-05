@@ -141,6 +141,20 @@ async def _mark_session_expired(account: KleinanzeigenAccount, db: AsyncSession,
     account.last_error = message
     await db.commit()
 
+    # The listings pages filter by account status — drop the cached
+    # listing snapshot so logged-out accounts disappear immediately.
+    try:
+        from app.services.cache import invalidate_listings_cache
+        await invalidate_listings_cache(account.user_id)
+    except Exception:
+        log.exception("Failed to invalidate listings cache for user %s", account.user_id)
+
+    # Realtime: let the frontend refresh account status + listings
+    await publish_event(account.user_id, "account.session_expired", {
+        "account_id": account.id,
+        "label": account.label,
+    })
+
     # Notify the account owner via push
     try:
         user_result = await db.execute(

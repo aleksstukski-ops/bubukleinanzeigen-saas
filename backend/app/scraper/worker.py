@@ -44,6 +44,10 @@ class Worker:
         message_poll_task = asyncio.create_task(self._message_poll_loop())
         self._tasks.add(message_poll_task)
         message_poll_task.add_done_callback(self._tasks.discard)
+        # Start periodic listings refresher
+        listing_poll_task = asyncio.create_task(self._listing_poll_loop())
+        self._tasks.add(listing_poll_task)
+        listing_poll_task.add_done_callback(self._tasks.discard)
         # Start auto-posting scheduler
         posting_task = asyncio.create_task(self._posting_scheduler_loop())
         self._tasks.add(posting_task)
@@ -184,6 +188,46 @@ class Worker:
                         )
             except Exception:
                 log.exception("Error in message poll loop")
+            for _ in range(interval):
+                if self._shutdown.is_set():
+                    return
+                await asyncio.sleep(1)
+
+    async def _listing_poll_loop(self) -> None:
+        """Periodically refresh listings for all active accounts.
+
+        Keeps the Inserate page fresh without user interaction and detects
+        logged-out sessions within minutes: the scrape lands on the login
+        page, marks the account session_expired, and the listings endpoints
+        stop serving that account's ads.
+        """
+        from app.models import AccountStatus, KleinanzeigenAccount
+        interval = max(60, settings.LISTING_POLL_SECONDS)
+        # Startup delay so login/verify/message jobs get the browser first
+        for _ in range(60):
+            if self._shutdown.is_set():
+                return
+            await asyncio.sleep(1)
+        while not self._shutdown.is_set():
+            try:
+                async with AsyncSessionLocal() as db:
+                    result = await db.execute(
+                        select(KleinanzeigenAccount).where(
+                            KleinanzeigenAccount.session_encrypted.isnot(None),
+                            KleinanzeigenAccount.status == AccountStatus.ACTIVE.value,
+                            KleinanzeigenAccount.is_enabled.is_(True),
+                        )
+                    )
+                    accounts = result.scalars().all()
+                    for account in accounts:
+                        await enqueue_job(
+                            db,
+                            JobType.SCRAPE_LISTINGS,
+                            account_id=account.id,
+                            priority=6,
+                        )
+            except Exception:
+                log.exception("Error in listing poll loop")
             for _ in range(interval):
                 if self._shutdown.is_set():
                     return

@@ -37,6 +37,9 @@ class Settings(BaseSettings):
  # Realtime: how often the worker proactively re-scrapes messages for
  # active accounts (seconds). Lower = closer to realtime, more load.
  MESSAGE_POLL_SECONDS: int = 90
+ # How often the worker refreshes listings per active account (seconds).
+ # Also detects logged-out sessions quickly (scrape marks session_expired).
+ LISTING_POLL_SECONDS: int = 300
  # Auto-posting scheduler tick interval (seconds)
  POSTING_SCHEDULER_INTERVAL: int = 60
 

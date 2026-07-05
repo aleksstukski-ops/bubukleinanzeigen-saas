@@ -183,6 +183,11 @@ async def delete_account(account_id: int, user: User = Depends(get_current_user)
     await db.delete(account)
     await db.commit()
 
+    # Listings of the deleted account are gone (cascade) — drop the cached
+    # snapshot so the Inserate page updates immediately.
+    from app.services.cache import invalidate_listings_cache
+    await invalidate_listings_cache(user.id)
+
 
 @router.post("/{account_id}/start-login", response_model=JobOut)
 async def start_login(account_id: int, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):

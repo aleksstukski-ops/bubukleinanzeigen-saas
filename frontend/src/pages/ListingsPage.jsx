@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import api from "../lib/api";
+import { subscribeEvents } from "../lib/events";
 import { LineChart, Line, ResponsiveContainer } from "recharts";
 import ListingDetailModal from "../components/ListingDetailModal";
 import ListingEditModal from "../components/ListingEditModal";
@@ -206,6 +207,24 @@ export default function ListingsPage() {
     setLoaded(true);
     loadListings();
   }
+
+  // Live: reload when the scraper found changes or a session expired,
+  // plus a 60s fallback poll. Cleanup on unmount.
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      if (document.hidden) return;
+      loadListings();
+    }, 60000);
+    const unsubscribe = subscribeEvents((event) => {
+      if (["listing.created", "account.session_expired"].includes(event.type)) {
+        loadListings();
+      }
+    });
+    return () => {
+      window.clearInterval(interval);
+      unsubscribe();
+    };
+  }, []);
 
   const filteredListings = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();

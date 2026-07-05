@@ -90,7 +90,13 @@ async def list_all_listings(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Return all active listings for all accounts belonging to this user — single DB query."""
+    """Return all active listings for all accounts belonging to this user — single DB query.
+
+    Only accounts that are connected (status=active, enabled) contribute
+    listings: a logged-out or disabled account must not show stale ads.
+    Stale data additionally triggers a background SCRAPE_LISTINGS per
+    account (stale-while-revalidate, like the per-account endpoint).
+    """
     cache_key = listings_all_cache_key(user.id)
     cached = await get_cache_json(cache_key)
     if cached is not None:
@@ -101,11 +107,35 @@ async def list_all_listings(
         .join(KleinanzeigenAccount, KleinanzeigenAccount.id == Listing.account_id)
         .where(
             KleinanzeigenAccount.user_id == user.id,
+            KleinanzeigenAccount.status == "active",
+            KleinanzeigenAccount.is_enabled.is_(True),
             Listing.is_active.is_(True),
         )
         .order_by(Listing.last_scraped_at.desc())
     )
     listings = result.scalars().all()
+
+    # Stale-while-revalidate: refresh accounts whose newest listing data
+    # is older than STALE_SECONDS (enqueue_job deduplicates).
+    now = datetime.now(timezone.utc)
+    newest_by_account: dict[int, datetime] = {}
+    for listing in listings:
+        current = newest_by_account.get(listing.account_id)
+        if current is None or (listing.last_scraped_at and listing.last_scraped_at > current):
+            newest_by_account[listing.account_id] = listing.last_scraped_at
+
+    accounts_result = await db.execute(
+        select(KleinanzeigenAccount.id).where(
+            KleinanzeigenAccount.user_id == user.id,
+            KleinanzeigenAccount.status == "active",
+            KleinanzeigenAccount.is_enabled.is_(True),
+        )
+    )
+    for (account_id,) in accounts_result.all():
+        newest = newest_by_account.get(account_id)
+        if newest is None or (now - newest).total_seconds() > STALE_SECONDS:
+            await enqueue_job(db, JobType.SCRAPE_LISTINGS, account_id=account_id, priority=5)
+
     await set_cache_json(cache_key, jsonable_encoder(listings), LISTINGS_ALL_TTL_SECONDS)
     return listings
 
