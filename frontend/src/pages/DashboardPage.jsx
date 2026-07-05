@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../lib/api";
+import { subscribeEvents } from "../lib/events";
 import { useAuth } from "../hooks/useAuth";
 import Modal from "../components/Modal";
 import { usePushNotifications } from "../hooks/usePushNotifications";
@@ -87,22 +88,21 @@ export default function DashboardPage() {
   const [activity, setActivity] = useState(null);
   const [activityError, setActivityError] = useState("");
 
-  const loadAccounts = async () => {
-    setLoadingAccounts(true);
+  const loadAccounts = async ({ silent = false } = {}) => {
+    if (!silent) setLoadingAccounts(true);
     setPageError("");
     try {
-      const [accountsRes, listingsRes, convsRes] = await Promise.all([
-        api.get("/ka-accounts"),
+      const [overviewRes, listingsRes] = await Promise.all([
+        api.get("/ka-accounts/overview"),
         api.get("/listings/all").catch(() => ({ data: [] })),
-        api.get("/messages/conversations").catch(() => ({ data: [] })),
       ]);
-      setAccounts(accountsRes.data);
-      const allListings = listingsRes.data || [];
-      setTotalViews(allListings.reduce((sum, l) => sum + Number(l.view_count || 0), 0));
-      const allConvs = convsRes.data || [];
-      setTotalUnread(allConvs.reduce((sum, c) => sum + Number(c.unread_count || 0), 0));
+      const overviewAccounts = overviewRes.data?.accounts || [];
+      setAccounts(overviewAccounts);
+      setTotalViews(overviewAccounts.reduce((sum, a) => sum + Number(a.total_views || 0), 0));
+      setTotalUnread(overviewAccounts.reduce((sum, a) => sum + Number(a.unread_count || 0), 0));
 
       // Build top-5 listings bar chart data
+      const allListings = listingsRes.data || [];
       const top5 = [...allListings]
         .sort((a, b) => Number(b.view_count || 0) - Number(a.view_count || 0))
         .slice(0, 5)
@@ -113,22 +113,17 @@ export default function DashboardPage() {
         }));
       setTopListingsChart(top5);
 
-      // Build views-per-account area chart data
-      const accMap = new Map((accountsRes.data || []).map((a) => [a.id, a.label || "Konto " + a.id]));
-      const byAcc = {};
-      for (const l of allListings) {
-        const key = accMap.get(l.account_id) || "Konto " + l.account_id;
-        if (!byAcc[key]) byAcc[key] = { name: key, views: 0, listings: 0 };
-        byAcc[key].views += Number(l.view_count || 0);
-        byAcc[key].listings += 1;
-      }
-      setViewsByAccount(Object.values(byAcc));
+      setViewsByAccount(overviewAccounts.map((a) => ({
+        name: a.label || "Konto " + a.id,
+        views: Number(a.total_views || 0),
+        listings: Number(a.listing_count || 0),
+      })));
 
-      await refreshUser();
+      if (!silent) await refreshUser();
     } catch (error) {
       setPageError(getErrorMessage(error));
     } finally {
-      setLoadingAccounts(false);
+      if (!silent) setLoadingAccounts(false);
     }
   };
 
@@ -151,6 +146,26 @@ export default function DashboardPage() {
     loadActivity();
   }
 
+  // Live: refresh silently every 30s and instantly on scraper events.
+  // Cleanup on unmount (same pattern as MessagesPage polling).
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      if (document.hidden) return;
+      loadAccounts({ silent: true });
+      loadActivity();
+    }, 30000);
+    const unsubscribe = subscribeEvents((event) => {
+      if (["conversations.updated", "conversation.updated", "listing.created"].includes(event.type)) {
+        loadAccounts({ silent: true });
+        loadActivity();
+      }
+    });
+    return () => {
+      window.clearInterval(interval);
+      unsubscribe();
+    };
+  }, []);
+
   const closeModal = () => {
     setModalOpen(false);
     setLabel("");
@@ -163,8 +178,8 @@ export default function DashboardPage() {
     setSaving(true);
     setFormError("");
     try {
-      const response = await api.post("/ka-accounts", { label });
-      setAccounts((current) => [...current, response.data]);
+      await api.post("/ka-accounts", { label });
+      await loadAccounts({ silent: true });
       await refreshUser();
       closeModal();
     } catch (error) {
@@ -188,7 +203,7 @@ export default function DashboardPage() {
               <p className="text-sm font-medium text-blue-600">Übersicht</p>
               <h1 className="mt-1 text-2xl font-semibold text-slate-900">Dashboard</h1>
               <p className="mt-2 max-w-2xl text-sm text-slate-500">
-                Hier siehst du Kontostatus und die Gesamtzahl deiner gespeicherten Listings über alle Accounts.
+                Alle Konten auf einen Blick — aktualisiert sich automatisch in Echtzeit.
               </p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
@@ -386,28 +401,58 @@ export default function DashboardPage() {
           ) : null}
 
           {!loadingAccounts && accounts.length > 0 ? (
-            <div className="mt-4 space-y-3">
+            <div className="mt-4 grid gap-3 xl:grid-cols-2">
               {accounts.map((account) => (
-                <div key={account.id} className="flex flex-col gap-3 rounded-lg border border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <div className="text-base font-medium text-slate-900">{account.label}</div>
+                <div key={account.id} className="rounded-lg border border-slate-200 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <div className="truncate text-base font-medium text-slate-900">{account.label}</div>
                       <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadgeClass(account.status)}`}>
                         {formatStatus(account.status)}
                       </span>
                     </div>
-                    <div className="mt-2 grid gap-1 text-sm text-slate-500 sm:grid-cols-2">
-                      <div>Benutzername: {account.kleinanzeigen_user_name || "Noch nicht verknüpft"}</div>
-                      <div>Listings: {account.listing_count || 0}</div>
+                    <div className="text-xs text-slate-400">
+                      {account.last_scraped_at ? `Sync ${formatRelative(account.last_scraped_at)}` : "Noch kein Sync"}
                     </div>
-                    {account.last_error ? (
-                      <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
-                        {account.last_error}
-                      </div>
-                    ) : null}
                   </div>
-                  <div className="flex flex-col gap-2 sm:flex-row">
-                    <Link className="btn-secondary" to="/accounts">Account öffnen</Link>
+                  <div className="mt-1 truncate text-xs text-slate-500">
+                    {account.kleinanzeigen_user_name || "Noch nicht verknüpft"}
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    <div className="rounded-lg bg-slate-50 p-2 text-center">
+                      <div className="text-lg font-semibold text-slate-900">{account.listing_count || 0}</div>
+                      <div className="text-[11px] text-slate-500">Inserate</div>
+                    </div>
+                    <div className="rounded-lg bg-slate-50 p-2 text-center">
+                      <div className="text-lg font-semibold text-slate-900">
+                        {new Intl.NumberFormat("de-DE").format(account.total_views || 0)}
+                      </div>
+                      <div className="text-[11px] text-slate-500">Views</div>
+                    </div>
+                    <div className={`rounded-lg p-2 text-center ${Number(account.unread_count || 0) > 0 ? "bg-red-50" : "bg-slate-50"}`}>
+                      <div className={`text-lg font-semibold ${Number(account.unread_count || 0) > 0 ? "text-red-600" : "text-slate-900"}`}>
+                        {account.unread_count || 0}
+                      </div>
+                      <div className="text-[11px] text-slate-500">Ungelesen</div>
+                    </div>
+                    <div className="rounded-lg bg-slate-50 p-2 text-center">
+                      <div className="text-lg font-semibold text-slate-900">{account.queued_posts || 0}</div>
+                      <div className="text-[11px] text-slate-500">Auto-Queue</div>
+                    </div>
+                  </div>
+
+                  {account.last_error ? (
+                    <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+                      {account.last_error}
+                    </div>
+                  ) : null}
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Link className="btn-secondary" to="/messages">{'💬'} Nachrichten</Link>
+                    <Link className="btn-secondary" to="/listings">{'📋'} Inserate</Link>
+                    <Link className="btn-secondary" to="/auto-post">{'🗓️'} Auto-Post</Link>
+                    <Link className="btn-secondary" to="/accounts">{'⚙️'} Konto</Link>
                   </div>
                 </div>
               ))}

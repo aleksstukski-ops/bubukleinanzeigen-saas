@@ -4,7 +4,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.db.session import get_db
-from app.models import AccountStatus, JobType, KleinanzeigenAccount, Listing, User
+from app.models import (
+    AccountStatus,
+    Conversation,
+    JobType,
+    KleinanzeigenAccount,
+    Listing,
+    ScheduledListing,
+    User,
+)
 from app.schemas.resources import JobOut, KleinanzeigenAccountCreate, KleinanzeigenAccountOut
 from app.services.jobs import enqueue_job
 
@@ -40,6 +48,75 @@ async def health_summary(
         "needs_login_count": len(needs_login),
         "needs_login": needs_login,
     }
+
+
+@router.get("/overview")
+async def accounts_overview(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """One call for the dashboard: every account with listings, views,
+    unread messages and auto-post queue length. All aggregates are batched
+    (4 GROUP-BY queries total, independent of account count)."""
+    accounts_result = await db.execute(
+        select(KleinanzeigenAccount)
+        .where(KleinanzeigenAccount.user_id == user.id)
+        .order_by(KleinanzeigenAccount.created_at)
+    )
+    accounts = accounts_result.scalars().all()
+    account_ids = [a.id for a in accounts]
+
+    listing_stats: dict[int, tuple[int, int, int]] = {}
+    unread: dict[int, int] = {}
+    queued: dict[int, int] = {}
+    if account_ids:
+        listing_result = await db.execute(
+            select(
+                Listing.account_id,
+                func.count(Listing.id),
+                func.coalesce(func.sum(Listing.view_count), 0),
+                func.coalesce(func.sum(Listing.bookmark_count), 0),
+            )
+            .where(Listing.account_id.in_(account_ids), Listing.is_active.is_(True))
+            .group_by(Listing.account_id)
+        )
+        listing_stats = {row[0]: (row[1], int(row[2]), int(row[3])) for row in listing_result.all()}
+
+        unread_result = await db.execute(
+            select(Conversation.account_id, func.coalesce(func.sum(Conversation.unread_count), 0))
+            .where(Conversation.account_id.in_(account_ids))
+            .group_by(Conversation.account_id)
+        )
+        unread = {row[0]: int(row[1]) for row in unread_result.all()}
+
+        queued_result = await db.execute(
+            select(ScheduledListing.account_id, func.count(ScheduledListing.id))
+            .where(
+                ScheduledListing.account_id.in_(account_ids),
+                ScheduledListing.status == "queued",
+            )
+            .group_by(ScheduledListing.account_id)
+        )
+        queued = {row[0]: row[1] for row in queued_result.all()}
+
+    out = []
+    for account in accounts:
+        count, views, bookmarks = listing_stats.get(account.id, (0, 0, 0))
+        out.append({
+            "id": account.id,
+            "label": account.label,
+            "kleinanzeigen_user_name": account.kleinanzeigen_user_name,
+            "status": account.status,
+            "is_enabled": account.is_enabled,
+            "last_scraped_at": account.last_scraped_at,
+            "last_error": account.last_error,
+            "listing_count": count,
+            "total_views": views,
+            "total_bookmarks": bookmarks,
+            "unread_count": unread.get(account.id, 0),
+            "queued_posts": queued.get(account.id, 0),
+        })
+    return {"accounts": out}
 
 
 @router.get("", response_model=list[KleinanzeigenAccountOut])
