@@ -7,6 +7,7 @@ from app.models.listing_template import ListingTemplate
 from app.models.auto_reply import AutoReplyRule
 from app.models.category_watch import CategoryWatch
 from app.models.activity_log import ActivityLog
+from app.models.posting_schedule import PostingSchedule, ScheduledListing
 
 __all__ = [
     "User", "SubscriptionPlan", "PLAN_LIMITS",
@@ -18,4 +19,5 @@ __all__ = [
     "AutoReplyRule",
     "CategoryWatch",
     "ActivityLog",
+    "PostingSchedule", "ScheduledListing",
 ]

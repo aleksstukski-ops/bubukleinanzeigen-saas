@@ -24,6 +24,7 @@ import WatchesPage from "./pages/WatchesPage";
 import AiCreatePage from "./pages/AiCreatePage";
 import NotFoundPage from "./pages/NotFoundPage";
 import AutoBumpPage from "./pages/AutoBumpPage";
+import AutoPostPage from "./pages/AutoPostPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import SupportPage from "./pages/SupportPage";
 
@@ -68,6 +69,7 @@ export default function App() {
                 <Route path="/watches" element={<WatchesPage />} />
                 <Route path="/ai-create" element={<AiCreatePage />} />
                 <Route path="/auto-bump" element={<AutoBumpPage />} />
+                <Route path="/auto-post" element={<AutoPostPage />} />
                 <Route path="/notifications" element={<NotificationsPage />} />
                 <Route path="/support" element={<SupportPage />} />
               </Route>

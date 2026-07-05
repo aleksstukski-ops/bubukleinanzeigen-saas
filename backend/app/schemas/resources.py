@@ -213,3 +213,49 @@ class CategoryWatchOut(BaseModel):
     is_active: bool
     last_checked_at: datetime | None
     created_at: datetime
+
+
+class PostingScheduleIn(BaseModel):
+    is_enabled: bool = False
+    posts_per_day: int = Field(default=3, ge=1, le=50)
+    window_start_hour: int = Field(default=9, ge=0, le=23)
+    window_end_hour: int = Field(default=18, ge=1, le=24)
+
+
+class PostingScheduleOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    account_id: int
+    is_enabled: bool
+    posts_per_day: int
+    window_start_hour: int
+    window_end_hour: int
+    last_posted_at: datetime | None
+    posted_today: int
+    created_at: datetime
+
+
+class ScheduledListingIn(BaseModel):
+    account_id: int
+    title: str = Field(min_length=1, max_length=500)
+    description: str | None = Field(default=None, max_length=20000)
+    price: str | None = Field(default=None, max_length=64)
+    category_id: str | None = Field(default=None, max_length=64)
+    location: str | None = Field(default=None, max_length=255)
+
+
+class ScheduledListingOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    account_id: int
+    title: str
+    description: str | None
+    price: str | None
+    category_id: str | None
+    location: str | None
+    status: str
+    error: str | None
+    posted_at: datetime | None
+    created_at: datetime

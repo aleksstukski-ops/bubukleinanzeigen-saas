@@ -34,6 +34,12 @@ class Settings(BaseSettings):
  SCRAPER_MAX_CONCURRENT_ACCOUNTS: int = 5
  SCRAPER_SESSION_DIR: str = "/app/storage/sessions"
 
+ # Realtime: how often the worker proactively re-scrapes messages for
+ # active accounts (seconds). Lower = closer to realtime, more load.
+ MESSAGE_POLL_SECONDS: int = 90
+ # Auto-posting scheduler tick interval (seconds)
+ POSTING_SCHEDULER_INTERVAL: int = 60
+
  # SMTP
  SMTP_HOST: str = "smtp.gmail.com"
  SMTP_PORT: int = 587

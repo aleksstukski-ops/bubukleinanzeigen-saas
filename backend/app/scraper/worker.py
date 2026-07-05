@@ -40,6 +40,14 @@ class Worker:
         session_checker_task = asyncio.create_task(self._session_checker_loop())
         self._tasks.add(session_checker_task)
         session_checker_task.add_done_callback(self._tasks.discard)
+        # Start near-realtime message poller
+        message_poll_task = asyncio.create_task(self._message_poll_loop())
+        self._tasks.add(message_poll_task)
+        message_poll_task.add_done_callback(self._tasks.discard)
+        # Start auto-posting scheduler
+        posting_task = asyncio.create_task(self._posting_scheduler_loop())
+        self._tasks.add(posting_task)
+        posting_task.add_done_callback(self._tasks.discard)
         try:
             while not self._shutdown.is_set():
                 await mark_scraper_heartbeat()
@@ -140,6 +148,174 @@ class Worker:
                 db.add(listing)
             await db.commit()
             log.info("Auto-bump scheduler: enqueued %s bump job(s)", len(listings))
+
+    async def _message_poll_loop(self) -> None:
+        """Proactively re-scrape messages for all active accounts.
+
+        This makes incoming messages near-realtime (interval is
+        MESSAGE_POLL_SECONDS, default 90s) instead of waiting for a user to
+        open the inbox. enqueue_job deduplicates, so an already pending or
+        running SCRAPE_MESSAGES job is never doubled.
+        """
+        from app.models import AccountStatus, KleinanzeigenAccount
+        interval = max(30, settings.MESSAGE_POLL_SECONDS)
+        # Small startup delay so login/verify jobs run first after a restart
+        for _ in range(30):
+            if self._shutdown.is_set():
+                return
+            await asyncio.sleep(1)
+        while not self._shutdown.is_set():
+            try:
+                async with AsyncSessionLocal() as db:
+                    result = await db.execute(
+                        select(KleinanzeigenAccount).where(
+                            KleinanzeigenAccount.session_encrypted.isnot(None),
+                            KleinanzeigenAccount.status == AccountStatus.ACTIVE.value,
+                            KleinanzeigenAccount.is_enabled.is_(True),
+                        )
+                    )
+                    accounts = result.scalars().all()
+                    for account in accounts:
+                        await enqueue_job(
+                            db,
+                            JobType.SCRAPE_MESSAGES,
+                            account_id=account.id,
+                            priority=5,
+                        )
+            except Exception:
+                log.exception("Error in message poll loop")
+            for _ in range(interval):
+                if self._shutdown.is_set():
+                    return
+                await asyncio.sleep(1)
+
+    async def _posting_scheduler_loop(self) -> None:
+        """Auto-posting: publish queued drafts according to per-account plans."""
+        interval = max(30, settings.POSTING_SCHEDULER_INTERVAL)
+        while not self._shutdown.is_set():
+            try:
+                await self._schedule_due_posts()
+                await self._reconcile_posting_failures()
+            except Exception:
+                log.exception("Error in posting scheduler loop")
+            for _ in range(interval):
+                if self._shutdown.is_set():
+                    return
+                await asyncio.sleep(1)
+
+    async def _schedule_due_posts(self) -> None:
+        from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+        from app.models import AccountStatus, KleinanzeigenAccount, PostingSchedule, ScheduledListing
+
+        now_utc = datetime.now(timezone.utc)
+        try:
+            local_tz = ZoneInfo("Europe/Berlin")
+        except ZoneInfoNotFoundError:
+            # Container without tzdata: fall back to CET so the loop keeps
+            # running (off by 1h during DST instead of dead).
+            local_tz = timezone(timedelta(hours=1))
+        now_local = now_utc.astimezone(local_tz)
+        today_local = now_local.date()
+
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(PostingSchedule, KleinanzeigenAccount)
+                .join(KleinanzeigenAccount, KleinanzeigenAccount.id == PostingSchedule.account_id)
+                .where(
+                    PostingSchedule.is_enabled.is_(True),
+                    KleinanzeigenAccount.status == AccountStatus.ACTIVE.value,
+                    KleinanzeigenAccount.is_enabled.is_(True),
+                    KleinanzeigenAccount.session_encrypted.isnot(None),
+                )
+            )
+            rows = result.all()
+            enqueued = 0
+            for schedule, account in rows:
+                # Reset the daily counter on date change (Europe/Berlin)
+                if schedule.posted_today_date != today_local:
+                    schedule.posted_today = 0
+                    schedule.posted_today_date = today_local
+                    db.add(schedule)
+
+                if schedule.posted_today >= schedule.posts_per_day:
+                    continue
+                if not (schedule.window_start_hour <= now_local.hour < schedule.window_end_hour):
+                    continue
+
+                # Spread posts evenly across the window instead of bursting
+                window_seconds = (schedule.window_end_hour - schedule.window_start_hour) * 3600
+                min_gap = window_seconds / max(1, schedule.posts_per_day)
+                if schedule.last_posted_at is not None:
+                    since_last = (now_utc - schedule.last_posted_at).total_seconds()
+                    if since_last < min_gap * 0.8:
+                        continue
+
+                draft_result = await db.execute(
+                    select(ScheduledListing)
+                    .where(
+                        ScheduledListing.account_id == account.id,
+                        ScheduledListing.status == "queued",
+                    )
+                    .order_by(ScheduledListing.id)
+                    .limit(1)
+                )
+                draft = draft_result.scalar_one_or_none()
+                if draft is None:
+                    continue
+
+                job = await enqueue_job(
+                    db,
+                    JobType.CREATE_LISTING,
+                    account_id=account.id,
+                    payload={
+                        "title": draft.title,
+                        "description": draft.description,
+                        "price": draft.price,
+                        "category_id": draft.category_id,
+                        "location": draft.location,
+                        "scheduled_listing_id": draft.id,
+                        "auto_post": True,
+                    },
+                    priority=5,
+                    deduplicate=False,
+                )
+                draft.status = "posting"
+                draft.job_id = job.id
+                schedule.posted_today += 1
+                schedule.posted_today_date = today_local
+                schedule.last_posted_at = now_utc
+                db.add(draft)
+                db.add(schedule)
+                enqueued += 1
+            if enqueued:
+                await db.commit()
+                log.info("Posting scheduler: enqueued %s auto-post job(s)", enqueued)
+            else:
+                # Commit potential daily-counter resets
+                await db.commit()
+
+    async def _reconcile_posting_failures(self) -> None:
+        """Mark drafts stuck in 'posting' as failed once their job failed."""
+        from app.models import ScheduledListing
+
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(ScheduledListing, Job)
+                .join(Job, Job.id == ScheduledListing.job_id)
+                .where(
+                    ScheduledListing.status == "posting",
+                    Job.status == JobStatus.FAILED.value,
+                )
+            )
+            rows = result.all()
+            if not rows:
+                return
+            for draft, job in rows:
+                draft.status = "failed"
+                draft.error = job.error_message or "Job fehlgeschlagen"
+                db.add(draft)
+            await db.commit()
+            log.warning("Posting scheduler: marked %s draft(s) as failed", len(rows))
 
     async def _session_checker_loop(self) -> None:
         """Every 6 hours, enqueue VERIFY_SESSION for every active account that has a session."""

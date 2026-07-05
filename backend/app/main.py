@@ -16,11 +16,13 @@ from app.api.routers import (
     auth,
     auto_replies,
     billing,
+    events,
     health,
     jobs,
     kleinanzeigen_accounts,
     listings,
     messages,
+    posting,
     push,
     templates,
     watches,
@@ -83,6 +85,8 @@ app.include_router(messages.router, prefix="/api")
 app.include_router(templates.router, prefix="/api")
 app.include_router(auto_replies.router, prefix="/api")
 app.include_router(watches.router, prefix="/api")
+app.include_router(events.router, prefix="/api")
+app.include_router(posting.router, prefix="/api")
 
 @app.get("/", include_in_schema=False)
 async def root():

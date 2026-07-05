@@ -20,6 +20,7 @@ from app.scraper.session_manager import SessionManager
 from app.services.alerts import send_alert
 from app.services.jobs import enqueue_job
 from app.services.sessions import get_account_storage_state, set_account_storage_state
+from app.shared.events import publish_event
 
 log = logging.getLogger("scraper.dispatcher")
 
@@ -462,6 +463,15 @@ async def _handle_scrape_messages(job: Job, db: AsyncSession, session_manager: S
                 if delta > 0:
                     new_unread += delta
                     triggering_items.append(item)
+
+            # Realtime: tell the frontend the conversation list changed.
+            # Fired on every scrape (not only on new unread) so previews,
+            # ordering and archived flags stay fresh without polling.
+            await publish_event(account.user_id, "conversations.updated", {
+                "account_id": account.id,
+                "new_unread": new_unread,
+            })
+
             if new_unread > 0:
                 user_result = await db.execute(
                     select(User).join(KleinanzeigenAccount, KleinanzeigenAccount.user_id == User.id)
@@ -575,6 +585,12 @@ async def _handle_scrape_conversation(job: Job, db: AsyncSession, session_manage
             account.last_error = None
             account.last_scraped_at = now
             await db.commit()
+
+            await publish_event(account.user_id, "conversation.updated", {
+                "conversation_id": conversation.id,
+                "account_id": account.id,
+                "message_count": len(scraped_items),
+            })
 
             # Auto-reply: brand-new incoming messages whose body matches a rule
             # get a SEND_MESSAGE job enqueued. We only fire on messages that
@@ -722,6 +738,12 @@ async def _handle_send_message(job: Job, db: AsyncSession, session_manager: Sess
             account.last_scraped_at = now
             await db.commit()
 
+            await publish_event(account.user_id, "conversation.updated", {
+                "conversation_id": conversation.id,
+                "account_id": account.id,
+                "sent": True,
+            })
+
             return {
                 **result,
                 "conversation_id": conversation.id,
@@ -729,6 +751,30 @@ async def _handle_send_message(job: Job, db: AsyncSession, session_manager: Sess
             }
         finally:
             await session_manager.close_account(account.id, headless=True)
+
+
+async def _update_scheduled_draft(
+    db: AsyncSession,
+    job: Job,
+    *,
+    status: str,
+    error: str | None = None,
+    posted_at: datetime | None = None,
+) -> None:
+    """Sync the auto-posting draft (if any) with the outcome of its CREATE_LISTING job."""
+    scheduled_id = job.payload.get("scheduled_listing_id")
+    if not scheduled_id:
+        return
+    from app.models import ScheduledListing
+    result = await db.execute(select(ScheduledListing).where(ScheduledListing.id == scheduled_id))
+    draft = result.scalar_one_or_none()
+    if draft is None:
+        return
+    draft.status = status
+    draft.error = error
+    if posted_at is not None:
+        draft.posted_at = posted_at
+    db.add(draft)
 
 
 async def _handle_create_listing(job: Job, db: AsyncSession, session_manager: SessionManager) -> dict[str, Any]:
@@ -756,6 +802,10 @@ async def _handle_create_listing(job: Job, db: AsyncSession, session_manager: Se
 
             if any(pattern in page.url for pattern in UrlPatterns.LOGIN_REQUIRED_PATTERNS):
                 await _mark_session_expired(account, db, message="Session abgelaufen")
+                # Put the auto-post draft back in the queue so it publishes
+                # automatically after the user re-logs in.
+                await _update_scheduled_draft(db, job, status="queued")
+                await db.commit()
                 return {"success": False, "valid": False}
 
             result = await create_page.create_listing(
@@ -785,7 +835,15 @@ async def _handle_create_listing(job: Job, db: AsyncSession, session_manager: Se
             account.status = AccountStatus.ACTIVE.value
             account.last_error = None
             account.last_scraped_at = now
+            await _update_scheduled_draft(db, job, status="posted", posted_at=now)
             await db.commit()
+
+            await publish_event(account.user_id, "listing.created", {
+                "account_id": account.id,
+                "title": title,
+                "kleinanzeigen_id": new_ka_id,
+                "auto_post": bool(job.payload.get("auto_post")),
+            })
 
             return {
                 **result,
