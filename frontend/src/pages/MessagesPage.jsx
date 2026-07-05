@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import api from "../lib/api";
+import { subscribeEvents } from "../lib/events";
 import ConversationView from "../components/ConversationView";
 import { SkeletonList } from "../components/Skeleton";
 
@@ -104,6 +105,7 @@ export default function MessagesPage() {
       pollingRef.current = null;
     }
 
+    // Fallback poll every 30s — realtime updates come via SSE below.
     pollingRef.current = window.setInterval(async () => {
       if (document.hidden) return;
       try {
@@ -120,9 +122,28 @@ export default function MessagesPage() {
         return null;
       }
       return null;
-    }, 15000);
+    }, 30000);
+
+    // Realtime: refresh instantly when the scraper found something new.
+    const unsubscribe = subscribeEvents((event) => {
+      if (event.type === "conversations.updated") {
+        loadConversations().catch(() => null);
+      }
+      if (event.type === "conversation.updated") {
+        loadConversations().catch(() => null);
+        const changedId = eventableId(event);
+        if (changedId && String(changedId) === String(selectedConversationId)) {
+          loadMessages(selectedConversationId).catch(() => null);
+        }
+      }
+    });
+
+    function eventableId(event) {
+      return event?.data?.conversation_id ?? null;
+    }
 
     return () => {
+      unsubscribe();
       if (pollingRef.current) {
         window.clearInterval(pollingRef.current);
         pollingRef.current = null;
@@ -213,7 +234,7 @@ export default function MessagesPage() {
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-slate-900">Nachrichten</h1>
-            <p className="mt-2 text-sm text-slate-500">Zentrale Inbox mit Polling alle 15 Sekunden.</p>
+            <p className="mt-2 text-sm text-slate-500">Zentrale Inbox — neue Nachrichten erscheinen automatisch in Echtzeit.</p>
           </div>
           <button type="button" onClick={loadAll} disabled={loading} className="btn-secondary">
             {loading ? (

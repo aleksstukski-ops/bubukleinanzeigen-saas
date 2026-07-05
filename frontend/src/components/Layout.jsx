@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import api from "../lib/api";
+import { subscribeEvents } from "../lib/events";
 import { ToastProvider } from "./Toast";
 
 // All nav items shown in desktop sidebar
@@ -16,6 +17,7 @@ const navItems = [
   { to: "/watches", label: "Kategorie-Monitor", icon: "🔔" },
   { to: "/ai-create", label: "KI-Erstellen", icon: "🪄" },
   { to: "/auto-bump", label: "Auto-Bump", icon: "⏱️" },
+  { to: "/auto-post", label: "Auto-Posting", icon: "🗓️" },
   { to: "/notifications", label: "Mitteilungen", icon: "📨" },
   { to: "/support", label: "Support", icon: "💬" },
 ];
@@ -120,11 +122,18 @@ export default function Layout() {
     setPollerStarted(true);
     fetchUnread();
     fetchKaHealth();
+    // Realtime: SSE pushes update the badge instantly; the interval below
+    // stays as fallback when the stream is down (60s instead of 15s).
+    subscribeEvents((event) => {
+      if (event.type === "conversations.updated" || event.type === "conversation.updated") {
+        fetchUnread();
+      }
+    });
     pollerRef.current = window.setInterval(() => {
       if (document.hidden) return;
       fetchUnread();
       fetchKaHealth();
-    }, 15000);
+    }, 60000);
   }
 
   const badges = { unread: unreadTotal };
