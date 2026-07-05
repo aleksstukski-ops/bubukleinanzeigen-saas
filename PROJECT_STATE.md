@@ -1,11 +1,57 @@
 # Project State
 
-Zuletzt aktualisiert: 2026-05-22 (Session 5)
+Zuletzt aktualisiert: 2026-07-05 (Session 6 — UX/Realtime-Ueberarbeitung)
 
 ## Aktueller Stand
 
-Phase: **ALLE FEATURES FERTIG — Bereit fuer Launch**
-Naechster Schritt: Chef-Tasks (Stripe, Telegram, VAPID Keys) → Live-Test → Launch.
+Phase: **Komplett-Ueberarbeitung Runde 1 fertig (Echtzeit + Auto-Posting + Dashboard)**
+Naechster Schritt: Chef-Tasks (Stripe, Cloudflare bububay.de DNS) → Live-Test → Launch.
+Branch: claude-code/ux-final (enthaelt auch Infra-Pass INFRA-02 + Toast/Skeleton).
+
+## Session 6 (2026-07-05): Komplett-Ueberarbeitung Runde 1
+
+Ausloeser: Chef unzufrieden mit bububay.de, Vorbild anzeigenchef-online.de.
+Konkurrenz-Analyse (AnzeigenChef 9,95 EUR/M, Kleinanzeigen-Enhanced ab 2,99 EUR/M):
+deren Kern-Features Zeitplanung/Autoresponder/Vorlagen/Batch — BubuBay hatte alles
+ausser **zeitgesteuertem Auto-Posting** und **Echtzeit**.
+
+Neu implementiert:
+
+1. **Echtzeit-Events (SSE)**: `shared/events.py` (Redis Pub/Sub, Kanal
+   `events:user:{id}`), `GET /api/events/stream?token=` (SSE, Token als
+   Query-Param weil EventSource keine Header kann). Dispatcher publiziert
+   `conversations.updated`, `conversation.updated`, `listing.created`.
+   Frontend: `lib/events.js` (Singleton-EventSource mit Reconnect),
+   eingebunden in Layout (Badge sofort), MessagesPage (Inbox live),
+   DashboardPage (Kacheln live). Polling bleibt als Fallback (30-60s).
+2. **Message-Poll-Loop im Worker**: alle MESSAGE_POLL_SECONDS (default 90s)
+   SCRAPE_MESSAGES fuer alle aktiven Accounts (dedupliziert) — eingehende
+   Nachrichten kommen jetzt ohne Zutun des Users an, Push + SSE feuern.
+3. **Auto-Posting-Scheduler**: Tabellen `posting_schedules` (pro Konto:
+   posts_per_day, Zeitfenster, Tageszaehler) + `scheduled_listings`
+   (Entwurfs-Warteschlange, Status queued/posting/posted/failed).
+   Worker-Loop verteilt Posts gleichmaessig uebers Zeitfenster
+   (Europe/Berlin, tzdata in requirements). CREATE_LISTING-Handler
+   verbucht Draft-Status; Session-Expired requeued den Draft automatisch.
+   API: /api/posting/schedules + /api/posting/queue (+ from-template,
+   retry). Frontend: AutoPostPage unter /auto-post.
+4. **Dashboard-Umbau**: neuer Endpoint `GET /ka-accounts/overview`
+   (4 Batch-Queries: Listings/Views/Bookmarks, Unread, Auto-Queue pro
+   Konto). Dashboard zeigt pro Konto Kacheln mit Inseraten/Views/
+   Ungelesen/Auto-Queue + Schnellaktionen, aktualisiert sich alle 30s
+   und sofort bei SSE-Events.
+5. Migration 0011 (posting_schedules, scheduled_listings) — ausgefuehrt.
+
+Verifiziert: alle Services laufen, Migration ok, Posting-API-Smoke-Test
+(Schedule-Upsert, 400 bei ungueltigem Fenster, Draft-Queue, Overview),
+SSE end-to-end (publish via Redis → Event am Stream empfangen).
+
+Offen fuer Runde 2 (Ideen aus Konkurrenz-Analyse):
+- KI-Anzeigenerstellung aus Fotos (Kleinanzeigen-Manager kann das)
+- KI-Betrugsanalyse fuer eingehende Nachrichten (Kleinanzeigen-Enhanced)
+- Bilder-Upload fuer Auto-Posting-Drafts (CREATE_LISTING kann noch keine Bilder)
+- Multi-Plattform (eBay/markt.de/Shpock) — AnzeigenChef-USP, MULTI-01
+- Views-Trend-Sparkline (UX-01)
 
 ## Session 5 (2026-05-22)
 

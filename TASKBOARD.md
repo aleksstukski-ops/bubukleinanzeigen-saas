@@ -14,7 +14,11 @@ Letzte Aktualisierung: 2026-05-22
 - [ ] **CLOUD-02**: api.bububay.de Route im Cloudflare Dashboard hinzufügen
 - [ ] **CLOUD-03**: bubuanzeigen.de → bububay.de 301 Redirect Rule
 
-### P1 — Naechste Sprint-Runde
+### P1 — Naechste Sprint-Runde (Ueberarbeitung Runde 2)
+- [ ] **AUTOPOST-02**: Bilder-Upload fuer Auto-Posting-Drafts (CREATE_LISTING um Fotos erweitern)
+- [ ] **AI-02**: KI-Betrugsanalyse fuer eingehende Nachrichten (Konkurrenz-Feature)
+- [ ] **AI-03**: KI-Anzeigenerstellung aus Fotos verbessern (Titel+Beschreibung+Preisvorschlag)
+- [ ] **RT-02**: SSE-Events auch fuer Job-Status (Inserat-Bearbeitung live im UI bestaetigen)
 
 ### P2 — Spaeter
 - [ ] **UX-01**: Views-Trend Sparkline pro Inserat
@@ -25,6 +29,9 @@ Letzte Aktualisierung: 2026-05-22
 <!-- - [ ] **TASK-ID**: Beschreibung | Agent: [codex/gpt/opus] | Seit: YYYY-MM-DD | Branch: xxx -->
 
 ## DONE
+- [x] **RT-01**: Echtzeit-Nachrichten (SSE /api/events/stream + Redis Pub/Sub + Worker-Message-Poll 90s) | Files: backend/app/shared/events.py, backend/app/api/routers/events.py, backend/app/scraper/dispatcher.py, backend/app/scraper/worker.py, frontend/src/lib/events.js, frontend/src/components/Layout.jsx, frontend/src/pages/MessagesPage.jsx | Agent: claude | 2026-07-05
+- [x] **AUTOPOST-01**: Auto-Posting-Scheduler (N Inserate/Tag pro Konto, Zeitfenster, Warteschlange) | Files: backend/app/models/posting_schedule.py, backend/migrations/versions/0011_add_posting_scheduler.py, backend/app/api/routers/posting.py, backend/app/scraper/worker.py, frontend/src/pages/AutoPostPage.jsx | Agent: claude | 2026-07-05
+- [x] **DASH-01**: Dashboard-Umbau (Multi-Account-Kacheln, /ka-accounts/overview, Live-Refresh) | Files: backend/app/api/routers/kleinanzeigen_accounts.py, frontend/src/pages/DashboardPage.jsx | Agent: claude | 2026-07-05
 - [x] **INFRA-02**: Docker, migrations, caching, security hardening | Files: backend/Dockerfile, frontend/Dockerfile, docker-compose.yml, backend/app/models/activity_log.py, backend/migrations/versions/0010_add_activity_log.py, backend/app/services/cache.py, backend/app/services/activity.py, backend/app/api/routers/activity.py, backend/app/api/routers/listings.py, backend/app/core/config.py, backend/app/schemas/auth.py, backend/app/main.py | Agent: codex | 2026-05-26 | Commit: 2218b82
 - [x] **WATCH-01**: CategoryWatch Backend + CHECK_CATEGORY Job | Agent: codex | 2026-05-24 | Commit: 58fb0ab
 - [x] **REPLY-01**: AutoReplyRule Backend + dispatcher hook | Agent: codex | 2026-05-24 | Commit: 58fb0ab
