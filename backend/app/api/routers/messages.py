@@ -6,8 +6,26 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.db.session import get_db
-from app.models import Conversation, JobType, KleinanzeigenAccount, Message, User
-from app.schemas.resources import ConversationOut, JobOut, MessageOut, SendMessageIn
+from app.models import (
+    BlockedPartner,
+    Conversation,
+    JobType,
+    KleinanzeigenAccount,
+    Message,
+    MessageTemplate,
+    User,
+)
+from app.schemas.resources import (
+    BlockedPartnerIn,
+    BlockedPartnerOut,
+    ConversationOut,
+    ConversationUpdateIn,
+    JobOut,
+    MessageOut,
+    MessageTemplateIn,
+    MessageTemplateOut,
+    SendMessageIn,
+)
 from app.services.jobs import enqueue_job
 
 router = APIRouter(prefix="/messages", tags=["messages"])
@@ -23,7 +41,11 @@ async def unread_summary(
     result = await db.execute(
         select(func.coalesce(func.sum(Conversation.unread_count), 0))
         .join(KleinanzeigenAccount, KleinanzeigenAccount.id == Conversation.account_id)
-        .where(KleinanzeigenAccount.user_id == user.id)
+        .where(
+            KleinanzeigenAccount.user_id == user.id,
+            Conversation.is_spam.is_(False),
+            Conversation.is_archived.is_(False),
+        )
     )
     total = int(result.scalar() or 0)
     return {"total_unread": total}
@@ -52,6 +74,7 @@ async def _get_conversation_for_user(
 @router.get("/conversations", response_model=list[ConversationOut])
 async def list_conversations(
     account_id: int | None = Query(None),
+    view: str = Query("inbox", pattern="^(inbox|archive|spam|all)$"),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -64,6 +87,16 @@ async def list_conversations(
 
     if account_id is not None:
         query = query.where(Conversation.account_id == account_id)
+
+    if view == "inbox":
+        query = query.where(
+            Conversation.is_archived.is_(False),
+            Conversation.is_spam.is_(False),
+        )
+    elif view == "archive":
+        query = query.where(Conversation.is_archived.is_(True), Conversation.is_spam.is_(False))
+    elif view == "spam":
+        query = query.where(Conversation.is_spam.is_(True))
 
     result = await db.execute(query)
     conversations = result.scalars().all()
@@ -172,3 +205,163 @@ async def mark_conversation_read(
     await db.commit()
 
     return {"success": True}
+
+
+@router.patch("/conversations/{conversation_id}", response_model=ConversationOut)
+async def update_conversation(
+    conversation_id: int,
+    data: ConversationUpdateIn,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Archive/unarchive, flag as spam, or attach a private note."""
+    conversation, _account = await _get_conversation_for_user(
+        db, conversation_id=conversation_id, user_id=user.id,
+    )
+    if data.is_archived is not None:
+        conversation.is_archived = data.is_archived
+    if data.is_spam is not None:
+        conversation.is_spam = data.is_spam
+    if data.note is not None:
+        conversation.note = data.note or None
+    await db.commit()
+    await db.refresh(conversation)
+    return conversation
+
+
+# --- Reply templates ------------------------------------------------------
+
+@router.get("/templates", response_model=list[MessageTemplateOut])
+async def list_message_templates(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(MessageTemplate)
+        .where(MessageTemplate.user_id == user.id)
+        .order_by(MessageTemplate.name)
+    )
+    return result.scalars().all()
+
+
+@router.post("/templates", response_model=MessageTemplateOut, status_code=201)
+async def create_message_template(
+    data: MessageTemplateIn,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    template = MessageTemplate(user_id=user.id, name=data.name.strip(), body=data.body)
+    db.add(template)
+    await db.commit()
+    await db.refresh(template)
+    return template
+
+
+@router.put("/templates/{template_id}", response_model=MessageTemplateOut)
+async def update_message_template(
+    template_id: int,
+    data: MessageTemplateIn,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(MessageTemplate).where(
+            MessageTemplate.id == template_id,
+            MessageTemplate.user_id == user.id,
+        )
+    )
+    template = result.scalar_one_or_none()
+    if not template:
+        raise HTTPException(status_code=404, detail="Vorlage nicht gefunden")
+    template.name = data.name.strip()
+    template.body = data.body
+    await db.commit()
+    await db.refresh(template)
+    return template
+
+
+@router.delete("/templates/{template_id}", status_code=204)
+async def delete_message_template(
+    template_id: int,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(MessageTemplate).where(
+            MessageTemplate.id == template_id,
+            MessageTemplate.user_id == user.id,
+        )
+    )
+    template = result.scalar_one_or_none()
+    if not template:
+        raise HTTPException(status_code=404, detail="Vorlage nicht gefunden")
+    await db.delete(template)
+    await db.commit()
+
+
+# --- Blocklist ------------------------------------------------------------
+
+@router.get("/blocklist", response_model=list[BlockedPartnerOut])
+async def list_blocked_partners(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(BlockedPartner)
+        .where(BlockedPartner.user_id == user.id)
+        .order_by(BlockedPartner.partner_name)
+    )
+    return result.scalars().all()
+
+
+@router.post("/blocklist", response_model=BlockedPartnerOut, status_code=201)
+async def block_partner(
+    data: BlockedPartnerIn,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    name = data.partner_name.strip()
+    existing = await db.execute(
+        select(BlockedPartner).where(
+            BlockedPartner.user_id == user.id,
+            BlockedPartner.partner_name == name,
+        )
+    )
+    entry = existing.scalar_one_or_none()
+    if entry is None:
+        entry = BlockedPartner(user_id=user.id, partner_name=name)
+        db.add(entry)
+
+    # Flag all existing conversations with this partner as spam right away
+    await db.execute(
+        update(Conversation)
+        .where(
+            Conversation.partner_name == name,
+            Conversation.account_id.in_(
+                select(KleinanzeigenAccount.id).where(KleinanzeigenAccount.user_id == user.id)
+            ),
+        )
+        .values(is_spam=True)
+    )
+    await db.commit()
+    await db.refresh(entry)
+    return entry
+
+
+@router.delete("/blocklist/{entry_id}", status_code=204)
+async def unblock_partner(
+    entry_id: int,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(BlockedPartner).where(
+            BlockedPartner.id == entry_id,
+            BlockedPartner.user_id == user.id,
+        )
+    )
+    entry = result.scalar_one_or_none()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Eintrag nicht gefunden")
+    await db.delete(entry)
+    await db.commit()

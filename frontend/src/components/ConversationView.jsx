@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 
 function formatDate(value) {
   if (!value) return "-";
@@ -23,8 +23,24 @@ export default function ConversationView({
   onReplyBodyChange,
   onSend,
   onMarkRead,
+  templates = [],
+  onInsertTemplate,
+  onArchiveToggle,
+  onSpamToggle,
+  onBlockPartner,
+  onSaveNote,
 }) {
   const scrollRef = useRef(null);
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [noteDraft, setNoteDraft] = useState("");
+  const [noteConversationId, setNoteConversationId] = useState(null);
+
+  // Reset the note editor when another conversation is selected
+  if (conversation && noteConversationId !== conversation.id) {
+    setNoteConversationId(conversation.id);
+    setNoteDraft(conversation.note || "");
+    setNoteOpen(false);
+  }
 
   useMemo(() => {
     if (!scrollRef.current) return null;
@@ -71,6 +87,54 @@ export default function ConversationView({
             {markingRead ? "..." : "Gelesen"}
           </button>
         </div>
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          {onArchiveToggle ? (
+            <button type="button" className="btn-secondary text-xs" onClick={() => onArchiveToggle(conversation)}>
+              {conversation.is_archived ? "📥 Zurueck in Inbox" : "🗂️ Archivieren"}
+            </button>
+          ) : null}
+          {onSpamToggle ? (
+            <button type="button" className="btn-secondary text-xs" onClick={() => onSpamToggle(conversation)}>
+              {conversation.is_spam ? "✅ Kein Spam" : "🚫 Spam"}
+            </button>
+          ) : null}
+          {onBlockPartner && conversation.partner_name ? (
+            <button type="button" className="btn-secondary text-xs" onClick={() => onBlockPartner(conversation)}>
+              {"⛔"} Blockieren
+            </button>
+          ) : null}
+          {onSaveNote ? (
+            <button type="button" className="btn-secondary text-xs" onClick={() => setNoteOpen((v) => !v)}>
+              {"📝"} Notiz{conversation.note ? " •" : ""}
+            </button>
+          ) : null}
+        </div>
+
+        {noteOpen && onSaveNote ? (
+          <div className="mt-3 space-y-2">
+            <textarea
+              value={noteDraft}
+              onChange={(event) => setNoteDraft(event.target.value)}
+              rows={2}
+              maxLength={10000}
+              placeholder="Private Notiz zu dieser Unterhaltung (nur fuer dich sichtbar)"
+              className="input text-sm"
+            />
+            <div className="flex justify-end gap-2">
+              <button type="button" className="btn-secondary text-xs" onClick={() => setNoteOpen(false)}>
+                Schliessen
+              </button>
+              <button
+                type="button"
+                className="btn-primary text-xs"
+                onClick={() => { onSaveNote(conversation, noteDraft); setNoteOpen(false); }}
+              >
+                Notiz speichern
+              </button>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain bg-slate-50 px-3 py-4 sm:px-4">
@@ -107,6 +171,23 @@ export default function ConversationView({
 
       <div className="border-t border-slate-200 bg-white p-4">
         <div className="space-y-3">
+          {templates.length > 0 && onInsertTemplate ? (
+            <div>
+              <select
+                className="input text-sm"
+                value=""
+                onChange={(event) => {
+                  const template = templates.find((t) => String(t.id) === event.target.value);
+                  if (template) onInsertTemplate(template);
+                }}
+              >
+                <option value="">{"⚡"} Vorlage einfuegen ({"{name}"} und {"{titel}"} werden ersetzt)</option>
+                {templates.map((template) => (
+                  <option key={template.id} value={String(template.id)}>{template.name}</option>
+                ))}
+              </select>
+            </div>
+          ) : null}
           <textarea
             value={replyBody}
             onChange={(event) => onReplyBodyChange(event.target.value)}

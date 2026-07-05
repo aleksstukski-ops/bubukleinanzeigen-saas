@@ -431,6 +431,17 @@ async def _handle_scrape_messages(job: Job, db: AsyncSession, session_manager: S
                 account_id=account.id,
             )
 
+            # Blocklist: conversations from blocked partners land in spam
+            from app.models import BlockedPartner
+            blocked_result = await db.execute(
+                select(BlockedPartner.partner_name).where(BlockedPartner.user_id == account.user_id)
+            )
+            blocked_names = {name for (name,) in blocked_result.all()}
+            if blocked_names:
+                for record in created_or_updated:
+                    if (record.partner_name or "").strip() in blocked_names:
+                        record.is_spam = True
+
             for record in created_or_updated:
                 db.add(record)
 

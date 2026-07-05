@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import api from "../lib/api";
 import { subscribeEvents } from "../lib/events";
 import ConversationView from "../components/ConversationView";
+import Modal from "../components/Modal";
 import { SkeletonList } from "../components/Skeleton";
 
 function getErrorMessage(error) {
@@ -34,16 +35,35 @@ export default function MessagesPage() {
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState("");
   const [markingRead, setMarkingRead] = useState(false);
+  const [view, setView] = useState("inbox");
+  const [messageTemplates, setMessageTemplates] = useState([]);
+  const [templatesModalOpen, setTemplatesModalOpen] = useState(false);
+  const [newTemplate, setNewTemplate] = useState({ name: "", body: "" });
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [templateError, setTemplateError] = useState("");
   const pollingRef = useRef(null);
+  const viewRef = useRef("inbox");
+  viewRef.current = view;
 
   const loadAccounts = async () => {
     const response = await api.get("/ka-accounts");
     setAccounts(response.data || []);
   };
 
+  const loadMessageTemplates = async () => {
+    try {
+      const response = await api.get("/messages/templates");
+      setMessageTemplates(response.data || []);
+    } catch (error) {
+      setMessageTemplates([]);
+    }
+  };
+
   const loadConversations = async () => {
-    const params = selectedAccountId !== "all" ? `?account_id=${selectedAccountId}` : "";
-    const response = await api.get(`/messages/conversations${params}`);
+    const params = new URLSearchParams();
+    if (selectedAccountId !== "all") params.set("account_id", selectedAccountId);
+    params.set("view", viewRef.current);
+    const response = await api.get(`/messages/conversations?${params.toString()}`);
     const accountById = new Map((accounts || []).map((account) => [account.id, account]));
 
     const items = (response.data || []).map((conversation) => ({
@@ -90,7 +110,19 @@ export default function MessagesPage() {
   if (!loaded) {
     setLoaded(true);
     loadAll();
+    loadMessageTemplates();
   }
+
+  const switchView = async (nextView) => {
+    setView(nextView);
+    viewRef.current = nextView;
+    setSelectedConversationId("");
+    try {
+      await loadConversations();
+    } catch (error) {
+      setPageError(getErrorMessage(error));
+    }
+  };
 
   useEffect(() => {
     if (!selectedConversationId) return;
@@ -223,6 +255,99 @@ export default function MessagesPage() {
     }
   };
 
+  const patchConversation = async (conversationId, patch, notice) => {
+    setPageError("");
+    setPageNotice("");
+    try {
+      await api.patch(`/messages/conversations/${conversationId}`, patch);
+      if (notice) setPageNotice(notice);
+      setSelectedConversationId("");
+      await loadConversations();
+    } catch (error) {
+      setPageError(getErrorMessage(error));
+    }
+  };
+
+  const handleArchiveToggle = (conversation) =>
+    patchConversation(
+      conversation.id,
+      { is_archived: !conversation.is_archived },
+      conversation.is_archived ? "Aus dem Archiv geholt." : "Archiviert.",
+    );
+
+  const handleSpamToggle = (conversation) =>
+    patchConversation(
+      conversation.id,
+      { is_spam: !conversation.is_spam },
+      conversation.is_spam ? "Kein Spam mehr." : "Als Spam markiert.",
+    );
+
+  const handleBlockPartner = async (conversation) => {
+    const partner = (conversation.partner_name || "").trim();
+    if (!partner) return;
+    const confirmed = window.confirm(
+      `"${partner}" blockieren? Alle Unterhaltungen mit diesem Namen landen kuenftig im Spam-Ordner.`
+    );
+    if (!confirmed) return;
+    setPageError("");
+    try {
+      await api.post("/messages/blocklist", { partner_name: partner });
+      setPageNotice(`${partner} blockiert.`);
+      setSelectedConversationId("");
+      await loadConversations();
+    } catch (error) {
+      setPageError(getErrorMessage(error));
+    }
+  };
+
+  const handleSaveNote = async (conversation, note) => {
+    setPageError("");
+    try {
+      await api.patch(`/messages/conversations/${conversation.id}`, { note });
+      setPageNotice("Notiz gespeichert.");
+      await loadConversations();
+    } catch (error) {
+      setPageError(getErrorMessage(error));
+    }
+  };
+
+  const handleCreateTemplate = async (event) => {
+    event.preventDefault();
+    setSavingTemplate(true);
+    setTemplateError("");
+    try {
+      const response = await api.post("/messages/templates", {
+        name: newTemplate.name.trim(),
+        body: newTemplate.body,
+      });
+      setMessageTemplates((current) => [...current, response.data].sort((a, b) => a.name.localeCompare(b.name)));
+      setNewTemplate({ name: "", body: "" });
+    } catch (error) {
+      setTemplateError(getErrorMessage(error));
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
+  const handleDeleteTemplate = async (template) => {
+    setTemplateError("");
+    try {
+      await api.delete(`/messages/templates/${template.id}`);
+      setMessageTemplates((current) => current.filter((t) => t.id !== template.id));
+    } catch (error) {
+      setTemplateError(getErrorMessage(error));
+    }
+  };
+
+  // Insert a reply template, expanding {name} and {titel} placeholders.
+  const handleInsertTemplate = (template) => {
+    if (!template || !selectedConversation) return;
+    const expanded = String(template.body || "")
+      .replaceAll("{name}", selectedConversation.partner_name || "")
+      .replaceAll("{titel}", selectedConversation.subject || "");
+    setReplyBody((current) => (current ? `${current}\n${expanded}` : expanded));
+  };
+
   const stats = useMemo(() => ({
     total: filteredConversations.length,
     unread: filteredConversations.reduce((sum, c) => sum + Number(c.unread_count || 0), 0),
@@ -236,6 +361,10 @@ export default function MessagesPage() {
             <h1 className="text-2xl font-semibold text-slate-900">Nachrichten</h1>
             <p className="mt-2 text-sm text-slate-500">Zentrale Inbox — neue Nachrichten erscheinen automatisch in Echtzeit.</p>
           </div>
+          <div className="flex gap-2">
+          <button type="button" onClick={() => setTemplatesModalOpen(true)} className="btn-secondary">
+            {'⚡'} Vorlagen
+          </button>
           <button type="button" onClick={loadAll} disabled={loading} className="btn-secondary">
             {loading ? (
               <span className="inline-flex items-center gap-2">
@@ -244,6 +373,7 @@ export default function MessagesPage() {
               </span>
             ) : "Neu laden"}
           </button>
+          </div>
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
@@ -260,6 +390,25 @@ export default function MessagesPage() {
 
       <section className="grid gap-4 xl:grid-cols-[380px_minmax(0,1fr)]">
         <div className="card">
+          <div className="mb-3 flex rounded-lg bg-slate-100 p-1 text-sm font-medium">
+            {[
+              { key: "inbox", label: "📥 Inbox" },
+              { key: "archive", label: "🗂️ Archiv" },
+              { key: "spam", label: "🚫 Spam" },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => switchView(tab.key)}
+                className={[
+                  "flex-1 rounded-md px-2 py-1.5 transition",
+                  view === tab.key ? "bg-white text-slate-900 shadow" : "text-slate-500 hover:text-slate-700",
+                ].join(" ")}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
           <div className="grid gap-3">
             <div>
               <label className="label">Konto</label>
@@ -336,9 +485,79 @@ export default function MessagesPage() {
             onReplyBodyChange={setReplyBody}
             onSend={handleSend}
             onMarkRead={handleMarkRead}
+            templates={messageTemplates}
+            onInsertTemplate={handleInsertTemplate}
+            onArchiveToggle={handleArchiveToggle}
+            onSpamToggle={handleSpamToggle}
+            onBlockPartner={handleBlockPartner}
+            onSaveNote={handleSaveNote}
           />
         </div>
       </section>
+
+      <Modal
+        open={templatesModalOpen}
+        onClose={() => setTemplatesModalOpen(false)}
+        title="Antwort-Vorlagen"
+        description="Platzhalter: {name} = Gespraechspartner, {titel} = Betreff des Inserats."
+        footer={
+          <div className="flex justify-end">
+            <button type="button" className="btn-secondary" onClick={() => setTemplatesModalOpen(false)}>Schliessen</button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <form className="space-y-3" onSubmit={handleCreateTemplate}>
+            <div>
+              <label className="label">Name</label>
+              <input
+                type="text" className="input" maxLength={120} required
+                placeholder="z. B. Noch verfuegbar"
+                value={newTemplate.name}
+                onChange={(e) => setNewTemplate((c) => ({ ...c, name: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="label">Text</label>
+              <textarea
+                className="input min-h-[80px]" required maxLength={10000}
+                placeholder={"Hallo {name}, ja, \"{titel}\" ist noch zu haben."}
+                value={newTemplate.body}
+                onChange={(e) => setNewTemplate((c) => ({ ...c, body: e.target.value }))}
+              />
+            </div>
+            <div className="flex justify-end">
+              <button type="submit" className="btn-primary" disabled={savingTemplate}>
+                {savingTemplate ? "Speichert..." : "Vorlage anlegen"}
+              </button>
+            </div>
+          </form>
+
+          {templateError ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{templateError}</div>
+          ) : null}
+
+          {messageTemplates.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
+              Noch keine Vorlagen.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {messageTemplates.map((template) => (
+                <div key={template.id} className="flex items-start justify-between gap-3 rounded-lg border border-slate-200 p-3">
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-slate-900">{template.name}</div>
+                    <div className="mt-1 line-clamp-2 whitespace-pre-wrap text-xs text-slate-500">{template.body}</div>
+                  </div>
+                  <button type="button" className="btn-secondary shrink-0 text-xs" onClick={() => handleDeleteTemplate(template)}>
+                    {'🗑️'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }
