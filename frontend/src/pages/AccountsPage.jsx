@@ -52,9 +52,9 @@ export default function AccountsPage() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   const [deletingId, setDeletingId] = useState(null);
-  const [loginStartingId, setLoginStartingId] = useState(null);
   const [refreshingId, setRefreshingId] = useState(null);
   const [verifyingId, setVerifyingId] = useState(null);
+  const [loginInfoAccount, setLoginInfoAccount] = useState(null);
 
   const loadAccounts = async () => {
     setLoadingAccounts(true);
@@ -113,19 +113,14 @@ export default function AccountsPage() {
     }
   };
 
-  const handleStartLogin = async (accountId) => {
-    setLoginStartingId(accountId);
+  // The Kleinanzeigen login needs a real, visible browser window (for the
+  // password and any captcha). That cannot run inside the Docker scraper,
+  // so instead of enqueuing a job that fails, we show the host command that
+  // opens the login window on the machine running BubuBay (the Mac Mini).
+  const handleStartLogin = (account) => {
     setPageError("");
     setPageNotice("");
-    try {
-      await api.post(`/ka-accounts/${accountId}/start-login`);
-      setPageNotice("Login-Job gestartet. Sichtbarer Browser läuft über den Host-Login-Prozess.");
-      await loadAccounts();
-    } catch (error) {
-      setPageError(getErrorMessage(error));
-    } finally {
-      setLoginStartingId(null);
-    }
+    setLoginInfoAccount(account);
   };
 
   const handleRefreshAccount = async (accountId) => {
@@ -263,14 +258,13 @@ export default function AccountsPage() {
                     </div>
 
                     <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                      {account.status === "pending_login" ? (
+                      {account.status === "pending_login" || account.status === "session_expired" ? (
                         <button
                           type="button"
                           className="btn-primary"
-                          disabled={loginStartingId === account.id}
-                          onClick={() => handleStartLogin(account.id)}
+                          onClick={() => handleStartLogin(account)}
                         >
-                          {loginStartingId === account.id ? "Startet..." : "Login starten"}
+                          {"🔐"} Verbinden
                         </button>
                       ) : null}
 
@@ -310,6 +304,40 @@ export default function AccountsPage() {
           ) : null}
         </section>
       </div>
+
+      <Modal
+        open={Boolean(loginInfoAccount)}
+        onClose={() => setLoginInfoAccount(null)}
+        title={`Konto "${loginInfoAccount?.label || ""}" verbinden`}
+        description="Der Kleinanzeigen-Login braucht ein echtes Browserfenster (Passwort, ggf. Captcha)."
+        footer={
+          <div className="flex justify-end">
+            <button type="button" className="btn-primary" onClick={() => setLoginInfoAccount(null)}>
+              Verstanden
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-4 text-sm text-slate-600">
+          <p>
+            Aus Sicherheitsgruenden kann der Login nicht automatisch im Hintergrund laufen.
+            Fuehre auf dem Rechner, auf dem BubuBay laeuft (Mac Mini), im Projektordner
+            diesen Befehl aus:
+          </p>
+          <pre className="overflow-x-auto rounded-lg bg-slate-900 px-3 py-2 text-xs text-slate-100">
+            {`scripts/login.sh "${loginInfoAccount?.label || "Kontoname"}"`}
+          </pre>
+          <p>
+            Es oeffnet sich ein Browserfenster. Melde dich dort bei Kleinanzeigen an und
+            klicke danach auf <span className="font-medium">„Meine Anzeigen"</span> — die
+            Sitzung wird automatisch gespeichert und das Konto hier auf
+            <span className="font-medium"> „Aktiv"</span> gesetzt.
+          </p>
+          <p className="text-xs text-slate-400">
+            Alternativ mit der Konto-ID: <span className="font-mono">scripts/login.sh --account-id {loginInfoAccount?.id}</span>
+          </p>
+        </div>
+      </Modal>
 
       <Modal
         open={modalOpen}
