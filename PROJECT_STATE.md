@@ -46,6 +46,33 @@ Verifiziert: alle Services laufen, Migration ok, Posting-API-Smoke-Test
 (Schedule-Upsert, 400 bei ungueltigem Fenster, Draft-Queue, Overview),
 SSE end-to-end (publish via Redis → Event am Stream empfangen).
 
+## Session 6c (2026-07-05): Kleinanzeigen-IP-Block + Anti-Block-Schutz
+
+Kleinanzeigen hat den IP-Bereich gesperrt ("zur Vorbeugung von Betrug").
+Ursache: die Echtzeit-Poll-Loops aus Runde 1 (Nachrichten 90s, Inserate
+300s, pro Konto) + parallele Requests (Concurrency 5) + Headless-
+Fingerprint sahen wie ein Bot aus. Loesung ist NICHT Umgehung (Proxy/IP-
+Wechsel), sondern menschliches Verhalten:
+
+- Neues Modul scraper/rate_limit.py: globales Pacing (min 20s + Jitter
+  zwischen ALLEN KA-Seitenaufrufen), Redis-Pause bei erkanntem Block
+  (2h Cooldown, geteilt mit API), Block-Text-Erkennung.
+- dispatch_job: Pause-Check (skippt Jobs ohne KA-Zugriff) + pace() vor
+  jedem Job. Block-Erkennung in scrape_listings/messages/verify.
+- Intervalle: Concurrency 5->1, MESSAGE_POLL 90->900s, LISTING_POLL
+  300->3600s (beide mit Jitter), STALE_SECONDS 120->900.
+- session_manager: realistischer Kontext (echte UA, de-DE, Europe/Berlin,
+  Viewport, navigator.webdriver versteckt, Anti-Automation-Flags). Gleicher
+  Fingerprint im Host-Login (scripts/host_login.py).
+- Sofortmassnahme: Redis-Pause manuell auf 2h gesetzt, damit die aktive
+  Sperre auslaeuft ohne dass BubuBay KA weiter anfasst.
+- Verifiziert: Block-Text des Users wird erkannt, Pause aktiv, Pacing
+  erzwingt ~29s Abstand.
+
+WICHTIG fuer die Zukunft: Poll-Intervalle NICHT wieder aggressiv senken.
+Der Host-Login (Riri) konnte wegen der Sperre noch nicht abgeschlossen
+werden — nach Ablauf (ca. 1-2h) erneut: scripts/login.sh Riri
+
 ## Session 6b (2026-07-05): AnzeigenChef-Desktop-Analyse + Runde 2
 
 AnzeigenChef Desktop 2.1.046 (Demo, lokal installiert) per UI-Walkthrough
