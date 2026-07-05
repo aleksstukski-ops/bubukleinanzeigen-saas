@@ -38,7 +38,9 @@ from app.services.activity import log_activity
 from app.services.jobs import enqueue_job
 
 router = APIRouter(prefix="/listings", tags=["listings"])
-STALE_SECONDS = 120
+# Higher than before so simply opening the page does not keep triggering
+# background scrapes — the worker refreshes on its own conservative schedule.
+STALE_SECONDS = 900
 
 
 class AutoBumpScheduleIn(BaseModel):

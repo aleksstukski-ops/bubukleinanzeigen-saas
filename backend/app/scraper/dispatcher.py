@@ -113,6 +113,19 @@ def _require_body(job: Job) -> str:
     return body
 
 
+async def _abort_if_blocked(page) -> None:
+    """Detect the Kleinanzeigen IP-block page. If seen, a global cooldown is
+    started (in detect_block) and this job aborts without retrying — the
+    dispatcher then drains the rest of the queue without touching the site."""
+    from app.scraper.rate_limit import detect_block
+    if await detect_block(page):
+        raise JobError(
+            "Kleinanzeigen hat den IP-Bereich gesperrt — Scraping pausiert automatisch. "
+            "Bitte 1-2 Stunden warten.",
+            recoverable=False,
+        )
+
+
 async def _get_authenticated_page(
     *,
     job: Job,
@@ -224,6 +237,7 @@ async def _handle_verify_session(job: Job, db: AsyncSession, session_manager: Se
 
         await page.goto(UrlPatterns.MY_ADS_BASE_URL, wait_until="domcontentloaded")
         await page.wait_for_selector("body", timeout=10000)
+        await _abort_if_blocked(page)
         current_url = page.url
 
         if any(pattern in current_url for pattern in UrlPatterns.LOGIN_REQUIRED_PATTERNS):
@@ -258,6 +272,7 @@ async def _handle_scrape_listings(job: Job, db: AsyncSession, session_manager: S
 
         listings_page = ListingsPage(page)
         await listings_page.open()
+        await _abort_if_blocked(page)
 
         if any(pattern in page.url for pattern in UrlPatterns.LOGIN_REQUIRED_PATTERNS):
             account.status = AccountStatus.SESSION_EXPIRED.value
@@ -397,6 +412,7 @@ async def _handle_scrape_messages(job: Job, db: AsyncSession, session_manager: S
 
         try:
             await messages_page.open()
+            await _abort_if_blocked(page)
 
             if any(pattern in page.url for pattern in UrlPatterns.LOGIN_REQUIRED_PATTERNS):
                 await _mark_session_expired(account, db, message="Session abgelaufen")
@@ -1109,5 +1125,17 @@ async def dispatch_job(job: Job, db: AsyncSession, session_manager: SessionManag
     handler = HANDLERS.get(job.type)
     if handler is None:
         raise JobError(f"Unknown job type: {job.type}", recoverable=False)
+
+    # Anti-block: if Kleinanzeigen recently blocked us, drain jobs without
+    # touching the site until the cooldown expires. No retry storm, no alert.
+    from app.scraper.rate_limit import is_paused, pace
+    paused, remaining = await is_paused()
+    if paused:
+        log.warning("Scraping paused (%ss left) — skipping job %s (%s)", remaining, job.id, job.type)
+        return {"skipped": True, "reason": "scraping_paused", "retry_in_seconds": remaining}
+
+    # Global pacing: keep a human-like gap between requests.
+    await pace()
+
     log.info("Dispatching job %s (type=%s, attempt=%s)", job.id, job.type, job.attempts)
     return await handler(job, db, session_manager)

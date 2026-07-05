@@ -132,7 +132,14 @@ class SessionManager:
 		playwright = await self._get_playwright()
 		browser = await playwright.chromium.launch(
 			headless=headless,
-			args=["--disable-dev-shm-usage"],
+			args=[
+				"--disable-dev-shm-usage",
+				# Reduce obvious automation fingerprints that anti-bot systems
+				# flag on headless Chromium.
+				"--disable-blink-features=AutomationControlled",
+				"--no-sandbox",
+				"--disable-infobars",
+			],
 		)
 		self._browsers[headless] = browser
 		return browser
@@ -143,10 +150,24 @@ class SessionManager:
 		return self._playwright
 
 	async def _create_context(self, browser: Browser, *, storage_state: dict | str | None = None) -> BrowserContext:
-		context_kwargs = {}
+		# A realistic desktop context: German locale + timezone and a normal
+		# Chrome user agent so legitimate self-account management is not
+		# mistaken for a headless bot.
+		context_kwargs: dict = {
+			"locale": "de-DE",
+			"timezone_id": "Europe/Berlin",
+			"viewport": {"width": 1366, "height": 900},
+		}
+		if settings.SCRAPER_USER_AGENT:
+			context_kwargs["user_agent"] = settings.SCRAPER_USER_AGENT
 		if storage_state is not None:
 			context_kwargs["storage_state"] = storage_state
-		return await browser.new_context(**context_kwargs)
+		context = await browser.new_context(**context_kwargs)
+		# navigator.webdriver === true is the single most common bot tell.
+		await context.add_init_script(
+			"Object.defineProperty(navigator, 'webdriver', {get: () => undefined});"
+		)
+		return context
 
 	def _find_page_for_account(self, account_id: int) -> Page | None:
 		for (page_account_id, _), page in self._pages.items():

@@ -170,25 +170,31 @@ class Worker:
             await asyncio.sleep(1)
         while not self._shutdown.is_set():
             try:
-                async with AsyncSessionLocal() as db:
-                    result = await db.execute(
-                        select(KleinanzeigenAccount).where(
-                            KleinanzeigenAccount.session_encrypted.isnot(None),
-                            KleinanzeigenAccount.status == AccountStatus.ACTIVE.value,
-                            KleinanzeigenAccount.is_enabled.is_(True),
+                from app.scraper.rate_limit import is_paused
+                paused, _ = await is_paused()
+                if not paused:
+                    async with AsyncSessionLocal() as db:
+                        result = await db.execute(
+                            select(KleinanzeigenAccount).where(
+                                KleinanzeigenAccount.session_encrypted.isnot(None),
+                                KleinanzeigenAccount.status == AccountStatus.ACTIVE.value,
+                                KleinanzeigenAccount.is_enabled.is_(True),
+                            )
                         )
-                    )
-                    accounts = result.scalars().all()
-                    for account in accounts:
-                        await enqueue_job(
-                            db,
-                            JobType.SCRAPE_MESSAGES,
-                            account_id=account.id,
-                            priority=5,
-                        )
+                        accounts = result.scalars().all()
+                        for account in accounts:
+                            await enqueue_job(
+                                db,
+                                JobType.SCRAPE_MESSAGES,
+                                account_id=account.id,
+                                priority=5,
+                            )
             except Exception:
                 log.exception("Error in message poll loop")
-            for _ in range(interval):
+            # Jittered interval so the cadence is not perfectly regular.
+            import random
+            wait_total = interval + random.randint(0, interval // 3)
+            for _ in range(wait_total):
                 if self._shutdown.is_set():
                     return
                 await asyncio.sleep(1)
@@ -210,25 +216,30 @@ class Worker:
             await asyncio.sleep(1)
         while not self._shutdown.is_set():
             try:
-                async with AsyncSessionLocal() as db:
-                    result = await db.execute(
-                        select(KleinanzeigenAccount).where(
-                            KleinanzeigenAccount.session_encrypted.isnot(None),
-                            KleinanzeigenAccount.status == AccountStatus.ACTIVE.value,
-                            KleinanzeigenAccount.is_enabled.is_(True),
+                from app.scraper.rate_limit import is_paused
+                paused, _ = await is_paused()
+                if not paused:
+                    async with AsyncSessionLocal() as db:
+                        result = await db.execute(
+                            select(KleinanzeigenAccount).where(
+                                KleinanzeigenAccount.session_encrypted.isnot(None),
+                                KleinanzeigenAccount.status == AccountStatus.ACTIVE.value,
+                                KleinanzeigenAccount.is_enabled.is_(True),
+                            )
                         )
-                    )
-                    accounts = result.scalars().all()
-                    for account in accounts:
-                        await enqueue_job(
-                            db,
-                            JobType.SCRAPE_LISTINGS,
-                            account_id=account.id,
-                            priority=6,
-                        )
+                        accounts = result.scalars().all()
+                        for account in accounts:
+                            await enqueue_job(
+                                db,
+                                JobType.SCRAPE_LISTINGS,
+                                account_id=account.id,
+                                priority=6,
+                            )
             except Exception:
                 log.exception("Error in listing poll loop")
-            for _ in range(interval):
+            import random
+            wait_total = interval + random.randint(0, interval // 4)
+            for _ in range(wait_total):
                 if self._shutdown.is_set():
                     return
                 await asyncio.sleep(1)

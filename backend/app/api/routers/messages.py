@@ -29,7 +29,9 @@ from app.schemas.resources import (
 from app.services.jobs import enqueue_job
 
 router = APIRouter(prefix="/messages", tags=["messages"])
-STALE_SECONDS = 120
+# Higher than before so opening the inbox does not keep triggering scrapes;
+# the worker polls messages on its own conservative schedule.
+STALE_SECONDS = 900
 
 
 @router.get("/unread-summary")

@@ -97,9 +97,20 @@ async def run(account_id: int | None, label: str | None) -> int:
         async with async_playwright() as pw:
             browser = await pw.chromium.launch(
                 headless=False,
-                args=["--start-maximized"],
+                args=["--start-maximized", "--disable-blink-features=AutomationControlled"],
             )
-            context = await browser.new_context(locale="de-DE", no_viewport=True)
+            context = await browser.new_context(
+                locale="de-DE",
+                timezone_id="Europe/Berlin",
+                no_viewport=True,
+                user_agent=(
+                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+                    "(KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36"
+                ),
+            )
+            await context.add_init_script(
+                "Object.defineProperty(navigator, 'webdriver', {get: () => undefined});"
+            )
             page = await context.new_page()
             await page.goto(LOGIN_URL, wait_until="domcontentloaded")
             try:

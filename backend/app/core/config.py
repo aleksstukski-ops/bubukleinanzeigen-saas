@@ -31,17 +31,32 @@ class Settings(BaseSettings):
  ALLOWED_ORIGINS: str = ",".join(_DEFAULT_ALLOWED_ORIGINS)
 
  PLAYWRIGHT_HEADLESS: bool = True
- SCRAPER_MAX_CONCURRENT_ACCOUNTS: int = 5
+ # Serialize by default — bursts of parallel requests from one IP are the
+ # strongest bot signal and get the IP range blocked.
+ SCRAPER_MAX_CONCURRENT_ACCOUNTS: int = 1
  SCRAPER_SESSION_DIR: str = "/app/storage/sessions"
 
  # Realtime: how often the worker proactively re-scrapes messages for
- # active accounts (seconds). Lower = closer to realtime, more load.
- MESSAGE_POLL_SECONDS: int = 90
+ # active accounts (seconds). Kept conservative — automated traffic that is
+ # too frequent looks like a bot to Kleinanzeigen and gets the IP blocked.
+ MESSAGE_POLL_SECONDS: int = 900
  # How often the worker refreshes listings per active account (seconds).
- # Also detects logged-out sessions quickly (scrape marks session_expired).
- LISTING_POLL_SECONDS: int = 300
+ LISTING_POLL_SECONDS: int = 3600
  # Auto-posting scheduler tick interval (seconds)
  POSTING_SCHEDULER_INTERVAL: int = 60
+
+ # Anti-block pacing: minimum gap (+ up to jitter) between any two
+ # Kleinanzeigen page loads across all accounts.
+ SCRAPER_MIN_REQUEST_GAP_SECONDS: float = 20.0
+ SCRAPER_REQUEST_JITTER_SECONDS: float = 20.0
+ # How long to pause ALL scraping after a block page is detected.
+ SCRAPER_BLOCK_COOLDOWN_SECONDS: int = 7200  # 2 hours
+ # A realistic desktop Chrome user agent (empty = Playwright default, which
+ # advertises HeadlessChrome and is trivially bot-detectable).
+ SCRAPER_USER_AGENT: str = (
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+  "(KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36"
+ )
 
  # SMTP
  SMTP_HOST: str = "smtp.gmail.com"
