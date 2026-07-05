@@ -41,6 +41,11 @@ class ListingOut(BaseModel):
     is_active: bool
     bump_interval_days: int | None = None
     next_bump_at: datetime | None = None
+    sale_status: str | None = None
+    sold_price: str | None = None
+    buyer_name: str | None = None
+    sale_note: str | None = None
+    sold_at: datetime | None = None
     last_scraped_at: datetime
     created_at: datetime
 
@@ -110,6 +115,8 @@ class ConversationOut(BaseModel):
     last_message_at: datetime | None
     unread_count: int
     is_archived: bool
+    is_spam: bool = False
+    note: str | None = None
     last_scraped_at: datetime
     created_at: datetime
 
@@ -259,3 +266,54 @@ class ScheduledListingOut(BaseModel):
     error: str | None
     posted_at: datetime | None
     created_at: datetime
+
+
+SALE_STATUSES = [
+    "reserved",
+    "awaiting_payment",
+    "awaiting_shipping",
+    "awaiting_pickup",
+    "completed",
+    "cancelled",
+]
+
+
+class SaleStatusIn(BaseModel):
+    # None clears the sale status (back to normal active listing)
+    sale_status: str | None = None
+    sold_price: str | None = Field(default=None, max_length=64)
+    buyer_name: str | None = Field(default=None, max_length=255)
+    sale_note: str | None = Field(default=None, max_length=10000)
+
+
+class MessageTemplateIn(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    body: str = Field(min_length=1, max_length=10000)
+
+
+class MessageTemplateOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    body: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class BlockedPartnerIn(BaseModel):
+    partner_name: str = Field(min_length=1, max_length=255)
+
+
+class BlockedPartnerOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    partner_name: str
+    created_at: datetime
+
+
+class ConversationUpdateIn(BaseModel):
+    is_archived: bool | None = None
+    is_spam: bool | None = None
+    note: str | None = Field(default=None, max_length=10000)

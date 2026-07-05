@@ -28,6 +28,14 @@ class Listing(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     bump_interval_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
     next_bump_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Sales pipeline: NULL = normal active listing. Stages:
+    # reserved -> awaiting_payment -> awaiting_shipping | awaiting_pickup
+    # -> completed | cancelled
+    sale_status: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    sold_price: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    buyer_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    sale_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sold_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_scraped_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
@@ -60,6 +68,8 @@ class Conversation(Base):
     last_message_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     unread_count: Mapped[int] = mapped_column(Integer, default=0)
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_spam: Mapped[bool] = mapped_column(Boolean, default=False)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
     last_scraped_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

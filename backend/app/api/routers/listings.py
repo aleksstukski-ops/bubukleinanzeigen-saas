@@ -25,6 +25,7 @@ from app.schemas.resources import (
     ListingOut,
     ListingStatOut,
     ListingUpdateIn,
+    SaleStatusIn,
 )
 from app.services.cache import (
     LISTINGS_ALL_TTL_SECONDS,
@@ -702,3 +703,102 @@ async def delete_listing(
     )
     await invalidate_listings_cache(user.id)
     return job
+
+
+# --- Sales pipeline -------------------------------------------------------
+
+_PRICE_RE = re.compile(r"(\d+(?:[.,]\d{1,2})?)")
+
+
+def _parse_price_value(price: str | None) -> float:
+    """Best-effort numeric value from a free-text price ('25 EUR', 'VB 30,50')."""
+    if not price:
+        return 0.0
+    match = _PRICE_RE.search(str(price))
+    if not match:
+        return 0.0
+    return float(match.group(1).replace(",", "."))
+
+
+@router.get("/sales-summary")
+async def sales_summary(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Totals for the sales page: value of active/reserved/in-progress/sold listings."""
+    from app.schemas.resources import SALE_STATUSES
+
+    result = await db.execute(
+        select(Listing)
+        .join(KleinanzeigenAccount, KleinanzeigenAccount.id == Listing.account_id)
+        .where(KleinanzeigenAccount.user_id == user.id)
+    )
+    listings = result.scalars().all()
+
+    active_value = 0.0
+    reserved_value = 0.0
+    pipeline_value = 0.0
+    sold_value = 0.0
+    counts: dict[str, int] = {status: 0 for status in SALE_STATUSES}
+    for listing in listings:
+        status = listing.sale_status
+        if status:
+            counts[status] = counts.get(status, 0) + 1
+        if status is None and listing.is_active:
+            active_value += _parse_price_value(listing.price)
+        elif status == "reserved":
+            reserved_value += _parse_price_value(listing.sold_price or listing.price)
+        elif status in ("awaiting_payment", "awaiting_shipping", "awaiting_pickup"):
+            pipeline_value += _parse_price_value(listing.sold_price or listing.price)
+        elif status == "completed":
+            sold_value += _parse_price_value(listing.sold_price or listing.price)
+
+    return {
+        "active_value": round(active_value, 2),
+        "reserved_value": round(reserved_value, 2),
+        "pipeline_value": round(pipeline_value, 2),
+        "sold_value": round(sold_value, 2),
+        "counts": counts,
+    }
+
+
+@router.patch("/sale/{listing_db_id}", response_model=ListingOut)
+async def set_sale_status(
+    listing_db_id: int,
+    data: SaleStatusIn,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from app.schemas.resources import SALE_STATUSES
+
+    result = await db.execute(
+        select(Listing)
+        .join(KleinanzeigenAccount, KleinanzeigenAccount.id == Listing.account_id)
+        .where(
+            Listing.id == listing_db_id,
+            KleinanzeigenAccount.user_id == user.id,
+        )
+    )
+    listing = result.scalar_one_or_none()
+    if not listing:
+        raise HTTPException(status_code=404, detail="Inserat nicht gefunden")
+
+    if data.sale_status is not None and data.sale_status not in SALE_STATUSES:
+        raise HTTPException(status_code=400, detail="Ungueltiger Verkaufsstatus")
+
+    listing.sale_status = data.sale_status
+    if data.sold_price is not None:
+        listing.sold_price = data.sold_price or None
+    if data.buyer_name is not None:
+        listing.buyer_name = data.buyer_name or None
+    if data.sale_note is not None:
+        listing.sale_note = data.sale_note or None
+    if data.sale_status == "completed" and listing.sold_at is None:
+        listing.sold_at = datetime.now(timezone.utc)
+    if data.sale_status is None:
+        listing.sold_at = None
+
+    await db.commit()
+    await db.refresh(listing)
+    await invalidate_listings_cache(user.id)
+    return listing

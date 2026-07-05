@@ -25,6 +25,7 @@ import AiCreatePage from "./pages/AiCreatePage";
 import NotFoundPage from "./pages/NotFoundPage";
 import AutoBumpPage from "./pages/AutoBumpPage";
 import AutoPostPage from "./pages/AutoPostPage";
+import SalesPage from "./pages/SalesPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import SupportPage from "./pages/SupportPage";
 
@@ -70,6 +71,7 @@ export default function App() {
                 <Route path="/ai-create" element={<AiCreatePage />} />
                 <Route path="/auto-bump" element={<AutoBumpPage />} />
                 <Route path="/auto-post" element={<AutoPostPage />} />
+                <Route path="/sales" element={<SalesPage />} />
                 <Route path="/notifications" element={<NotificationsPage />} />
                 <Route path="/support" element={<SupportPage />} />
               </Route>

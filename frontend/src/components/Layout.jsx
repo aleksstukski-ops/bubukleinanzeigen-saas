@@ -10,6 +10,7 @@ const navItems = [
   { to: "/dashboard", label: "Dashboard", icon: "🏠" },
   { to: "/listings", label: "Inserate", icon: "📋" },
   { to: "/messages", label: "Nachrichten", icon: "💬", badgeKey: "unread" },
+  { to: "/sales", label: "Verkäufe", icon: "💰" },
   { to: "/accounts", label: "Konten", icon: "⚙️" },
   { to: "/billing", label: "Abrechnung", icon: "💳" },
   { to: "/settings", label: "Einstellungen", icon: "🎨" },
