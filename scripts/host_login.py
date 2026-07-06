@@ -19,13 +19,27 @@ Usage (via scripts/login.sh, which sets up the venv):
 import argparse
 import asyncio
 import json
+import subprocess
 import sys
+import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
 import asyncpg
 from cryptography.fernet import Fernet
 from playwright.async_api import async_playwright
+
+
+def _find_chrome() -> str | None:
+    candidates = [
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        "/Applications/Google Chrome Beta.app/Contents/MacOS/Google Chrome Beta",
+        "/Applications/Chromium.app/Contents/MacOS/Chromium",
+    ]
+    for path in candidates:
+        if Path(path).exists():
+            return path
+    return None
 
 LOGIN_URL = "https://www.kleinanzeigen.de/m-einloggen.html"
 MY_ADS_BASE_URL = "https://www.kleinanzeigen.de/m-meine-anzeigen.html"
@@ -115,89 +129,106 @@ async def run(account_id: int | None, label: str | None) -> int:
         print("Ein Browserfenster oeffnet sich. Melde dich dort bei Kleinanzeigen an.", flush=True)
         print("Sobald du auf 'Meine Anzeigen' landest, wird die Sitzung gespeichert.\n", flush=True)
 
-        async with async_playwright() as pw:
-            browser = await pw.chromium.launch(
-                headless=False,
-                args=["--start-maximized", "--disable-blink-features=AutomationControlled"],
-            )
-            context = await browser.new_context(
-                locale="de-DE",
-                timezone_id="Europe/Berlin",
-                no_viewport=True,
-                user_agent=(
-                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-                    "(KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36"
-                ),
-            )
-            await context.add_init_script(
-                "Object.defineProperty(navigator, 'webdriver', {get: () => undefined});"
-            )
-            page = await context.new_page()
-            await page.goto(LOGIN_URL, wait_until="domcontentloaded")
-            try:
-                await page.bring_to_front()
-            except Exception:
-                pass
+        # Start the REAL Google Chrome as a normal subprocess (NOT launched by
+        # Playwright, so it carries no automation flags — navigator.webdriver
+        # stays false and Akamai Bot Manager sees a genuine human browser).
+        # Playwright then only *connects* over CDP to read the session after
+        # the user has logged in by hand.
+        chrome_bin = _find_chrome()
+        if not chrome_bin:
+            print("Google Chrome nicht gefunden. Bitte Google Chrome installieren.", flush=True)
+            return 1
 
-            deadline = 900  # 15 minutes
-            elapsed = 0
-            success = False
-            left_login = False
-            while elapsed < deadline:
-                url = page.url
-                # Detect the Kleinanzeigen IP-block page and stop early with
-                # clear guidance instead of waiting out the full timeout.
+        profile_dir = str(PROJECT_ROOT / ".chrome-login-profile")
+        debug_port = 9222
+        chrome_proc = subprocess.Popen(
+            [
+                chrome_bin,
+                f"--remote-debugging-port={debug_port}",
+                f"--user-data-dir={profile_dir}",
+                "--no-first-run",
+                "--no-default-browser-check",
+                "--new-window",
+                LOGIN_URL,
+            ],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
+        try:
+            # Wait for the CDP endpoint to come up.
+            cdp_ready = False
+            for _ in range(40):
                 try:
-                    content = (await page.content()).lower()
+                    urllib.request.urlopen(f"http://localhost:{debug_port}/json/version", timeout=1)
+                    cdp_ready = True
+                    break
                 except Exception:
-                    content = ""
-                if any(m in content for m in BLOCK_MARKERS):
+                    await asyncio.sleep(0.5)
+            if not cdp_ready:
+                print("Chrome liess sich nicht mit Debug-Port starten.", flush=True)
+                return 1
+
+            async with async_playwright() as pw:
+                browser = await pw.chromium.connect_over_cdp(f"http://localhost:{debug_port}")
+
+                def all_pages():
+                    pages = []
+                    for ctx in browser.contexts:
+                        pages.extend(ctx.pages)
+                    return pages
+
+                deadline = 900  # 15 minutes
+                elapsed = 0
+                success = False
+                success_ctx = None
+                while elapsed < deadline:
+                    pages = all_pages()
+                    for pg in pages:
+                        try:
+                            url = pg.url
+                        except Exception:
+                            continue
+                        if any(p in url for p in LOGIN_SUCCESS_PATTERNS):
+                            success = True
+                            success_ctx = pg.context
+                            break
+                        # Only read page content for block detection on KA pages
+                        if "kleinanzeigen.de" in url:
+                            try:
+                                content = (await pg.content()).lower()
+                            except Exception:
+                                content = ""
+                            if any(m in content for m in BLOCK_MARKERS):
+                                print(
+                                    "\nKleinanzeigen zeigt die Sperrseite (Akamai Bot-Schutz).\n"
+                                    "Warte 15-30 Minuten und starte erneut. Lass Kleinanzeigen\n"
+                                    "in der Zwischenzeit in Ruhe (kein wiederholtes Aufrufen).\n",
+                                    flush=True,
+                                )
+                                return 3
+                    if success:
+                        break
+                    if elapsed % 30 == 0 and elapsed > 0:
+                        print(f"...warte auf Login ({elapsed}s / {deadline}s)", flush=True)
+                    await asyncio.sleep(2)
+                    elapsed += 2
+
+                if not success:
                     print(
-                        "\nKleinanzeigen hat den IP-Bereich gesperrt.\n"
-                        "Der Login kann jetzt nicht abgeschlossen werden.\n\n"
-                        "So bekommst du wieder Zugang:\n"
-                        "  1. Router/Fritzbox neu verbinden (Internet ~5 Min trennen),\n"
-                        "     damit dein Anbieter eine neue IP vergibt.\n"
-                        "  2. In den naechsten Stunden Kleinanzeigen NICHT wiederholt\n"
-                        "     aufrufen (auch nicht im normalen Browser) — das verlaengert\n"
-                        "     die Sperre.\n"
-                        "  3. Danach diesen Login erneut starten.\n",
+                        "Zeitueberschreitung: Login nicht erkannt. Tipp: nach dem Einloggen "
+                        "oben rechts auf 'Meine Anzeigen' klicken.",
                         flush=True,
                     )
-                    await browser.close()
-                    return 3
-                if any(p in url for p in LOGIN_SUCCESS_PATTERNS):
-                    success = True
-                    break
-                # Once the user has left the login page (logged in and browsing),
-                # gently confirm by loading "Meine Anzeigen" — if it stays there,
-                # the session is valid; if it bounces back to login, keep waiting.
-                if "einloggen" not in url and "/login" not in url and not left_login and elapsed > 4:
-                    left_login = True
-                    try:
-                        await page.goto(MY_ADS_BASE_URL, wait_until="domcontentloaded")
-                        if any(p in page.url for p in LOGIN_SUCCESS_PATTERNS):
-                            success = True
-                            break
-                    except Exception:
-                        pass
-                    left_login = False  # allow another confirm attempt later
-                if elapsed % 30 == 0 and elapsed > 0:
-                    print(f"...warte auf Login ({elapsed}s / {deadline}s)", flush=True)
-                await page.wait_for_timeout(2000)
-                elapsed += 2
+                    return 2
 
-            if not success:
-                print(
-                    "Zeitueberschreitung: Login nicht erkannt. Tipp: nach dem Einloggen "
-                    "oben rechts auf 'Meine Anzeigen' klicken.",
-                    flush=True,
-                )
+                storage_state = await (success_ctx or browser.contexts[0]).storage_state()
                 await browser.close()
-                return 2
-
-            storage_state = await context.storage_state()
-            await browser.close()
+        finally:
+            try:
+                chrome_proc.terminate()
+            except Exception:
+                pass
 
         payload = json.dumps(storage_state, ensure_ascii=False, separators=(",", ":"))
         encrypted = fernet.encrypt(payload.encode()).decode()

@@ -101,3 +101,4 @@ check3-state.json
 monitor_log.txt
 scripts/health-check.sh
 .venv-host/
+.chrome-login-profile/
