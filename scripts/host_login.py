@@ -178,10 +178,11 @@ async def run(account_id: int | None, label: str | None) -> int:
                         pages.extend(ctx.pages)
                     return pages
 
-                deadline = 900  # 15 minutes
+                deadline = 1800  # 30 minutes
                 elapsed = 0
                 success = False
                 success_ctx = None
+                saw_login_domain = False
                 while elapsed < deadline:
                     pages = all_pages()
                     for pg in pages:
@@ -189,11 +190,27 @@ async def run(account_id: int | None, label: str | None) -> int:
                             url = pg.url
                         except Exception:
                             continue
+                        # Explicit success: the "Meine Anzeigen" member page.
                         if any(p in url for p in LOGIN_SUCCESS_PATTERNS):
                             success = True
                             success_ctx = pg.context
                             break
-                        # Only read page content for block detection on KA pages
+                        # Track that the user reached the Auth0/SSO login flow.
+                        if "login.kleinanzeigen.de" in url:
+                            saw_login_domain = True
+                        # Forgiving success: after the login flow, the user is
+                        # redirected back to the main site — that means they are
+                        # logged in even if they never click "Meine Anzeigen".
+                        if (
+                            saw_login_domain
+                            and "www.kleinanzeigen.de" in url
+                            and "einloggen" not in url
+                            and "/login" not in url
+                        ):
+                            success = True
+                            success_ctx = pg.context
+                            break
+                        # Block detection on KA pages.
                         if "kleinanzeigen.de" in url:
                             try:
                                 content = (await pg.content()).lower()
@@ -209,15 +226,15 @@ async def run(account_id: int | None, label: str | None) -> int:
                                 return 3
                     if success:
                         break
-                    if elapsed % 30 == 0 and elapsed > 0:
-                        print(f"...warte auf Login ({elapsed}s / {deadline}s)", flush=True)
+                    if elapsed % 60 == 0 and elapsed > 0:
+                        print(f"...warte auf Login ({elapsed//60} von 30 Min)", flush=True)
                     await asyncio.sleep(2)
                     elapsed += 2
 
                 if not success:
                     print(
-                        "Zeitueberschreitung: Login nicht erkannt. Tipp: nach dem Einloggen "
-                        "oben rechts auf 'Meine Anzeigen' klicken.",
+                        "Zeitueberschreitung (30 Min): Login nicht erkannt. Melde dich im\n"
+                        "Chrome-Fenster an und starte danach erneut.",
                         flush=True,
                     )
                     return 2
