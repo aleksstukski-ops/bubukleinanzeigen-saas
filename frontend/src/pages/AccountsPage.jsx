@@ -321,12 +321,16 @@ export default function AccountsPage() {
         <div className="space-y-4 text-sm text-slate-600">
           <p>
             Aus Sicherheitsgruenden kann der Login nicht automatisch im Hintergrund laufen.
-            Fuehre auf dem Rechner, auf dem BubuBay laeuft (Mac Mini), im Projektordner
-            diesen Befehl aus:
+            Oeffne auf dem Rechner, auf dem BubuBay laeuft (Mac Mini), das Terminal und
+            fuehre diese beiden Zeilen aus:
           </p>
           <pre className="overflow-x-auto rounded-lg bg-slate-900 px-3 py-2 text-xs text-slate-100">
-            {`scripts/login.sh "${loginInfoAccount?.label || "Kontoname"}"`}
+            {`cd ~/Projects/bubukleinanzeigen-saas\nscripts/login.sh "${loginInfoAccount?.label || "Kontoname"}"`}
           </pre>
+          <p className="text-xs text-slate-400">
+            Wichtig: erst mit <span className="font-mono">cd</span> in den Projektordner
+            wechseln — sonst meldet das Terminal „no such file or directory".
+          </p>
           <p>
             Es oeffnet sich ein Browserfenster. Melde dich dort bei Kleinanzeigen an und
             klicke danach auf <span className="font-medium">„Meine Anzeigen"</span> — die
@@ -335,6 +339,10 @@ export default function AccountsPage() {
           </p>
           <p className="text-xs text-slate-400">
             Alternativ mit der Konto-ID: <span className="font-mono">scripts/login.sh --account-id {loginInfoAccount?.id}</span>
+          </p>
+          <p className="text-xs text-slate-400">
+            Nach dem Login kann es 1-2 Stunden dauern, falls Kleinanzeigen den Zugang
+            gerade wegen zu vieler Zugriffe kurzzeitig sperrt — dann einfach spaeter erneut.
           </p>
         </div>
       </Modal>
