@@ -30,6 +30,27 @@ from playwright.async_api import async_playwright
 LOGIN_URL = "https://www.kleinanzeigen.de/m-einloggen.html"
 MY_ADS_BASE_URL = "https://www.kleinanzeigen.de/m-meine-anzeigen.html"
 LOGIN_SUCCESS_PATTERNS = ["/m-meine-anzeigen.html", "/m-meine-anzeigen/"]
+BLOCK_MARKERS = (
+    "ip-bereich",
+    "voruebergehend gesperrt",
+    "vorübergehend gesperrt",
+    "zur vorbeugung von betrug",
+    "zeitweilig von der nutzung",
+)
+
+
+def clear_scraper_pause(redis_url: str) -> None:
+    """Best-effort: after a successful login the IP works again, so lift any
+    block cooldown the scraper set. Never fails the login if Redis is down."""
+    try:
+        import redis  # optional dependency
+
+        host_url = redis_url.replace("redis://redis:", "redis://localhost:")
+        client = redis.from_url(host_url)
+        client.delete("scraper:paused_until", "scraper:block_count")
+        client.close()
+    except Exception:
+        pass
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -124,6 +145,27 @@ async def run(account_id: int | None, label: str | None) -> int:
             left_login = False
             while elapsed < deadline:
                 url = page.url
+                # Detect the Kleinanzeigen IP-block page and stop early with
+                # clear guidance instead of waiting out the full timeout.
+                try:
+                    content = (await page.content()).lower()
+                except Exception:
+                    content = ""
+                if any(m in content for m in BLOCK_MARKERS):
+                    print(
+                        "\nKleinanzeigen hat den IP-Bereich gesperrt.\n"
+                        "Der Login kann jetzt nicht abgeschlossen werden.\n\n"
+                        "So bekommst du wieder Zugang:\n"
+                        "  1. Router/Fritzbox neu verbinden (Internet ~5 Min trennen),\n"
+                        "     damit dein Anbieter eine neue IP vergibt.\n"
+                        "  2. In den naechsten Stunden Kleinanzeigen NICHT wiederholt\n"
+                        "     aufrufen (auch nicht im normalen Browser) — das verlaengert\n"
+                        "     die Sperre.\n"
+                        "  3. Danach diesen Login erneut starten.\n",
+                        flush=True,
+                    )
+                    await browser.close()
+                    return 3
                 if any(p in url for p in LOGIN_SUCCESS_PATTERNS):
                     success = True
                     break
@@ -171,6 +213,8 @@ async def run(account_id: int | None, label: str | None) -> int:
             """,
             encrypted, now, acc_id,
         )
+        # The IP works again — lift any block cooldown the scraper set.
+        clear_scraper_pause(env.get("REDIS_URL", "redis://localhost:6379/0"))
         print(f"\nErfolg! Konto '{account['label']}' ist jetzt verbunden (status=active).", flush=True)
         print("Der Scraper nutzt die Sitzung ab sofort automatisch.", flush=True)
         return 0

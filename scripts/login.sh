@@ -18,7 +18,7 @@ if [ ! -d "$VENV" ]; then
   echo "Richte einmalig die Login-Umgebung ein (dauert ~1 Minute)..."
   "$PYTHON" -m venv "$VENV"
   "$VENV/bin/pip" install --quiet --upgrade pip
-  "$VENV/bin/pip" install --quiet "playwright==1.47.0" "cryptography==43.0.1" "asyncpg==0.29.0"
+  "$VENV/bin/pip" install --quiet "playwright==1.47.0" "cryptography==43.0.1" "asyncpg==0.29.0" "redis==5.1.1"
   # Browser fuer Playwright bereitstellen (nutzt vorhandenen Cache, laedt sonst nach)
   "$VENV/bin/python" -m playwright install chromium
 fi
